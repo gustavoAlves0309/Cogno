@@ -28,13 +28,18 @@ body {
 }
 
 #game-container {
-  width: 100vw;
+  position: fixed;
+  inset: 0;
+  width: 100svw;
   height: 100dvh;
   display: grid;
   place-items: center;
+  overflow: hidden;
 }
 
 canvas {
   display: block;
+  width: 100% !important;
+  height: 100% !important;
   image-rendering: auto;
 }

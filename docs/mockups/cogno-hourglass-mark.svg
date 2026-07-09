@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Cogno hourglass mark</title>
+  <desc id="desc">Compact Cogno hourglass mark in gold and cyan.</desc>
+  <rect width="256" height="256" rx="36" fill="#061018" />
+  <path d="M54 44 A110 110 0 0 1 202 44" fill="none" stroke="#d8b65d" stroke-width="5" stroke-linecap="round" opacity="0.55" />
+  <path d="M54 212 A110 110 0 0 0 202 212" fill="none" stroke="#d8b65d" stroke-width="5" stroke-linecap="round" opacity="0.55" />
+  <path d="M64 128 H38 M192 128 H218" fill="none" stroke="#42d6d2" stroke-width="4" stroke-linecap="round" opacity="0.62" />
+  <path d="M78 62 H178" fill="none" stroke="#f0cf79" stroke-width="13" stroke-linecap="round" />
+  <path d="M78 194 H178" fill="none" stroke="#f0cf79" stroke-width="13" stroke-linecap="round" />
+  <path d="M94 87 C111 105 119 119 128 128 C137 119 145 105 162 87" fill="none" stroke="#f0cf79" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M94 169 C111 151 119 137 128 128 C137 137 145 151 162 169" fill="none" stroke="#f0cf79" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M108 101 C116 113 122 121 126 128 H130 C134 121 140 113 148 101Z" fill="#f0cf79" opacity="0.2" />
+  <path d="M106 173 C116 158 123 150 128 146 C133 150 140 158 150 173Z" fill="#f0cf79" opacity="0.74" />
+  <path d="M128 111 V145" fill="none" stroke="#42d6d2" stroke-width="7" stroke-linecap="round" />
+  <circle cx="128" cy="128" r="8" fill="#42d6d2" />
+</svg>

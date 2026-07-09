@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cogno Logo Concepts</title>
+    <style>
+      :root {
+        --bg: #04060a;
+        --panel: #071018;
+        --panel-2: #0d1720;
+        --gold: #f0cf79;
+        --gold-2: #d8b65d;
+        --cyan: #42d6d2;
+        --red: #d4574d;
+        --ink: #d8e6e4;
+        --muted: #8aa0aa;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(90deg, rgba(66, 214, 210, 0.06) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(216, 182, 93, 0.045) 1px, transparent 1px),
+          radial-gradient(circle at 50% -18%, rgba(216, 182, 93, 0.14), transparent 34%),
+          linear-gradient(180deg, #05070d 0%, #09131c 48%, #030508 100%);
+        background-size: 38px 38px, 38px 38px, auto, auto;
+        font-family: "Trebuchet MS", Verdana, sans-serif;
+      }
+
+      .board {
+        width: min(1360px, calc(100vw - 48px));
+        margin: 0 auto;
+        padding: 44px 0 56px;
+      }
+
+      header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: end;
+        gap: 24px;
+        padding: 0 4px 26px;
+        border-bottom: 1px solid rgba(216, 182, 93, 0.24);
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--gold);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(32px, 4vw, 56px);
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .brief {
+        max-width: 620px;
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      .palette {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      .swatch {
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(244, 232, 198, 0.24);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 22px;
+      }
+
+      .card {
+        position: relative;
+        min-height: 394px;
+        overflow: hidden;
+        border: 1px solid rgba(216, 182, 93, 0.35);
+        border-radius: 8px;
+        background:
+          linear-gradient(180deg, rgba(17, 26, 35, 0.92), rgba(5, 11, 18, 0.97)),
+          repeating-linear-gradient(0deg, transparent 0 15px, rgba(66, 214, 210, 0.035) 16px);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: 18px;
+        border: 1px solid rgba(66, 214, 210, 0.11);
+        pointer-events: none;
+      }
+
+      .meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px 0;
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .badge {
+        color: #061018;
+        background: var(--gold);
+        padding: 5px 8px;
+        border: 1px solid rgba(255, 226, 160, 0.7);
+      }
+
+      .stage {
+        position: relative;
+        height: 235px;
+        margin: 10px 16px 0;
+        border: 1px solid rgba(66, 214, 210, 0.13);
+        background: radial-gradient(circle at 50% 45%, rgba(66, 214, 210, 0.08), transparent 48%);
+      }
+
+      svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .word {
+        fill: var(--gold);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 58px;
+        font-weight: 500;
+        letter-spacing: 10px;
+        text-anchor: middle;
+      }
+
+      .word-tight {
+        fill: var(--gold);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 54px;
+        font-weight: 500;
+        letter-spacing: 5px;
+        text-anchor: middle;
+      }
+
+      .subtitle {
+        fill: #9db3c2;
+        font-size: 13px;
+        letter-spacing: 3px;
+        text-anchor: middle;
+        text-transform: uppercase;
+      }
+
+      .label {
+        padding: 16px 18px 18px;
+      }
+
+      h2 {
+        margin: 0 0 8px;
+        color: #f4d88b;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 22px;
+        font-weight: 500;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .mini {
+        position: absolute;
+        right: 26px;
+        bottom: 18px;
+        display: grid;
+        place-items: center;
+        width: 54px;
+        height: 54px;
+        border: 1px solid rgba(216, 182, 93, 0.58);
+        background: #061018;
+      }
+
+      @media (max-width: 980px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        header {
+          grid-template-columns: 1fr;
+        }
+
+        .palette {
+          justify-content: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <header>
+        <div>
+          <h1>Cogno Logo Explorations</h1>
+          <p class="brief">
+            Six possible identity directions for the game: all keep the dark arena mood, gold hierarchy,
+            cyan memory energy, and a symbol that can shrink into a stage-select icon.
+          </p>
+        </div>
+        <div class="palette" aria-label="Palette">
+          <span class="swatch" style="background:#04060a"></span>
+          <span class="swatch" style="background:#07131b"></span>
+          <span class="swatch" style="background:#f0cf79"></span>
+          <span class="swatch" style="background:#42d6d2"></span>
+          <span class="swatch" style="background:#d4574d"></span>
+        </div>
+      </header>
+
+      <section class="grid" aria-label="Logo concepts">
+        <article class="card">
+          <div class="meta"><span>01 / Title Logo</span><span class="badge">Recommended</span></div>
+          <div class="stage">
+            <svg viewBox="0 0 520 235" role="img" aria-label="Eye of Memory logo concept">
+              <defs>
+                <filter id="goldGlow" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="2.2" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <path d="M86 92 H198" stroke="#d8b65d" stroke-width="2" opacity=".7" />
+              <path d="M322 92 H434" stroke="#d8b65d" stroke-width="2" opacity=".7" />
+              <text x="260" y="111" class="word" filter="url(#goldGlow)">COGNO</text>
+              <path d="M198 134 C222 112 298 112 322 134 C298 156 222 156 198 134Z" fill="#07131b" stroke="#42d6d2" stroke-width="3" />
+              <circle cx="260" cy="134" r="16" fill="#f0cf79" />
+              <circle cx="260" cy="134" r="8" fill="#061018" />
+              <circle cx="263" cy="130" r="3" fill="#42d6d2" />
+              <path d="M168 166 H352" stroke="#d8b65d" stroke-width="2" opacity=".82" />
+              <text x="260" y="190" class="subtitle">Eye of Memory</text>
+            </svg>
+            <div class="mini">
+              <svg viewBox="0 0 64 64">
+                <path d="M10 32 C20 18 44 18 54 32 C44 46 20 46 10 32Z" fill="#07131b" stroke="#42d6d2" stroke-width="3" />
+                <circle cx="32" cy="32" r="10" fill="#f0cf79" />
+                <circle cx="32" cy="32" r="5" fill="#061018" />
+              </svg>
+            </div>
+          </div>
+          <div class="label">
+            <h2>Eye of Memory</h2>
+            <p>Most aligned with the current title screen: instantly reads as memory, divinity, focus, and boss patterns.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="meta"><span>02 / Seal Mark</span><span>Arcade Relic</span></div>
+          <div class="stage">
+            <svg viewBox="0 0 520 235" role="img" aria-label="Chronicle Seal logo concept">
+              <g transform="translate(260 106)">
+                <circle r="82" fill="#07131b" stroke="#d8b65d" stroke-width="3" />
+                <circle r="68" fill="none" stroke="#42d6d2" stroke-width="1.5" opacity=".55" />
+                <g stroke="#d8b65d" stroke-width="2" opacity=".68">
+                  <path d="M0 -92 V-78" />
+                  <path d="M0 92 V78" />
+                  <path d="M92 0 H78" />
+                  <path d="M-92 0 H-78" />
+                  <path d="M65 -65 L55 -55" />
+                  <path d="M-65 -65 L-55 -55" />
+                  <path d="M65 65 L55 55" />
+                  <path d="M-65 65 L-55 55" />
+                </g>
+                <path d="M-18 -42 H18 L5 -8 L22 40 H-22 L-5 -8Z" fill="#0f1c25" stroke="#f0cf79" stroke-width="3" />
+                <path d="M-10 -23 C0 -16 10 -23 17 -15" stroke="#42d6d2" stroke-width="3" fill="none" />
+              </g>
+              <text x="260" y="127" class="word-tight">COGNO</text>
+              <text x="260" y="190" class="subtitle">Chronicle Seal</text>
+            </svg>
+            <div class="mini">
+              <svg viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="23" fill="#07131b" stroke="#d8b65d" stroke-width="3" />
+                <path d="M24 16 H40 L34 31 L42 48 H22 L30 31Z" fill="#0f1c25" stroke="#f0cf79" stroke-width="3" />
+              </svg>
+            </div>
+          </div>
+          <div class="label">
+            <h2>Chronicle Seal</h2>
+            <p>Feels like an ancient archive badge. Strong for app icons and menus, a bit more formal than playful.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="meta"><span>03 / Memory Circuit</span><span>High Energy</span></div>
+          <div class="stage">
+            <svg viewBox="0 0 520 235" role="img" aria-label="Neural Relic logo concept">
+              <g stroke="#42d6d2" stroke-width="2" opacity=".85">
+                <path d="M102 150 L156 118 L214 143 L270 103 L324 130 L390 88" fill="none" />
+                <path d="M126 76 L178 104 L226 76 L288 92 L344 64 L404 91" fill="none" opacity=".48" />
+              </g>
+              <g fill="#42d6d2">
+                <circle cx="102" cy="150" r="5" />
+                <circle cx="156" cy="118" r="5" />
+                <circle cx="214" cy="143" r="5" />
+                <circle cx="270" cy="103" r="5" />
+                <circle cx="324" cy="130" r="5" />
+                <circle cx="390" cy="88" r="5" />
+              </g>
+              <text x="260" y="121" class="word">COGNO</text>
+              <path d="M86 138 H432" stroke="#d8b65d" stroke-width="2" opacity=".62" />
+              <text x="260" y="190" class="subtitle">Neural Relic</text>
+            </svg>
+            <div class="mini">
+              <svg viewBox="0 0 64 64">
+                <path d="M14 45 L25 26 L37 38 L50 18" stroke="#42d6d2" stroke-width="4" fill="none" />
+                <g fill="#f0cf79">
+                  <circle cx="14" cy="45" r="4" />
+                  <circle cx="25" cy="26" r="4" />
+                  <circle cx="37" cy="38" r="4" />
+                  <circle cx="50" cy="18" r="4" />
+                </g>
+              </svg>
+            </div>
+          </div>
+          <div class="label">
+            <h2>Neural Relic</h2>
+            <p>Pushes the "cognition" side of Cogno. Better if we want history plus mind-game energy.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="meta"><span>04 / Stage Identity</span><span>Menu Friendly</span></div>
+          <div class="stage">
+            <svg viewBox="0 0 520 235" role="img" aria-label="Pantheon Marks logo concept">
+              <text x="260" y="86" class="word">COGNO</text>
+              <path d="M112 108 H408" stroke="#d8b65d" stroke-width="2" opacity=".75" />
+              <g transform="translate(154 145)">
+                <circle r="30" fill="#07131b" stroke="#d8b65d" stroke-width="2" />
+                <path d="M-15 -5 L0 -31 L15 -5Z" fill="#0b2e54" stroke="#d8b65d" stroke-width="2" />
+                <rect x="-9" y="-3" width="18" height="24" fill="#d79a52" />
+                <path d="M-20 17 H20" stroke="#42d6d2" stroke-width="3" />
+              </g>
+              <g transform="translate(260 145)">
+                <circle r="30" fill="#07131b" stroke="#d8b65d" stroke-width="2" opacity=".85" />
+                <path d="M-18 12 C-8 -22 10 -22 18 12" fill="#2a2c32" stroke="#d8b65d" stroke-width="2" />
+                <path d="M-10 -6 H10 M-14 2 H14" stroke="#42d6d2" stroke-width="2" />
+              </g>
+              <g transform="translate(366 145)">
+                <circle r="30" fill="#07131b" stroke="#d8b65d" stroke-width="2" opacity=".85" />
+                <path d="M-22 -2 L0 -25 L22 -2 L14 20 H-14Z" fill="#4a3328" stroke="#d8b65d" stroke-width="2" />
+                <path d="M-14 8 H14" stroke="#d4574d" stroke-width="3" />
+              </g>
+              <text x="260" y="205" class="subtitle">Boss Pantheon</text>
+            </svg>
+            <div class="mini">
+              <svg viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="23" fill="#07131b" stroke="#d8b65d" stroke-width="3" />
+                <path d="M20 34 L32 12 L44 34Z" fill="#0b2e54" stroke="#d8b65d" stroke-width="3" />
+                <path d="M17 45 H47" stroke="#42d6d2" stroke-width="4" />
+              </svg>
+            </div>
+          </div>
+          <div class="label">
+            <h2>Boss Pantheon</h2>
+            <p>Great for a stage-select game. It turns the historical bosses into the brand system from the start.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="meta"><span>05 / Engraved Tablet</span><span>Ancient</span></div>
+          <div class="stage">
+            <svg viewBox="0 0 520 235" role="img" aria-label="Broken Tablet logo concept">
+              <path d="M92 55 H416 L444 81 V162 L420 184 H102 L76 158 V80Z" fill="#0d1720" stroke="#d8b65d" stroke-width="3" />
+              <path d="M106 70 H238 L253 86 H425 M95 164 H234 L251 148 L414 166" stroke="#42d6d2" stroke-width="1.8" opacity=".45" />
+              <path d="M285 58 L262 93 L278 126 L246 176" stroke="#d4574d" stroke-width="2" opacity=".72" />
+              <path d="M132 102 H388" stroke="#061018" stroke-width="11" opacity=".6" />
+              <text x="260" y="119" class="word-tight">COGNO</text>
+              <text x="260" y="153" class="subtitle">Engraved Memory</text>
+            </svg>
+            <div class="mini">
+              <svg viewBox="0 0 64 64">
+                <path d="M14 13 H48 L54 20 V48 L47 54 H16 L10 47 V20Z" fill="#0d1720" stroke="#d8b65d" stroke-width="3" />
+                <path d="M35 14 L29 31 L36 50" stroke="#d4574d" stroke-width="3" />
+                <path d="M19 33 H45" stroke="#42d6d2" stroke-width="3" />
+              </svg>
+            </div>
+          </div>
+          <div class="label">
+            <h2>Engraved Tablet</h2>
+            <p>More artifact-heavy and tactile. It gives the game weight, but can feel less sharp on small screens.</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="meta"><span>06 / Portal Mark</span><span>Cinematic</span></div>
+          <div class="stage">
+            <svg viewBox="0 0 520 235" role="img" aria-label="Memory Gate logo concept">
+              <g opacity=".88">
+                <path d="M96 48 H134 V176 H96Z" fill="#0d1720" stroke="#d8b65d" stroke-width="2" />
+                <path d="M386 48 H424 V176 H386Z" fill="#0d1720" stroke="#d8b65d" stroke-width="2" />
+                <path d="M80 176 H440" stroke="#d8b65d" stroke-width="3" />
+                <path d="M134 70 C180 30 340 30 386 70" fill="none" stroke="#42d6d2" stroke-width="2" opacity=".72" />
+                <path d="M156 164 C190 96 330 96 364 164" fill="none" stroke="#d8b65d" stroke-width="2" opacity=".62" />
+              </g>
+              <text x="260" y="119" class="word">COGNO</text>
+              <path d="M214 146 C234 131 286 131 306 146 C286 160 234 160 214 146Z" fill="#07131b" stroke="#42d6d2" stroke-width="2.5" />
+              <circle cx="260" cy="146" r="9" fill="#f0cf79" />
+              <text x="260" y="205" class="subtitle">Memory Gate</text>
+            </svg>
+            <div class="mini">
+              <svg viewBox="0 0 64 64">
+                <path d="M15 10 H24 V54 H15Z M40 10 H49 V54 H40Z" fill="#0d1720" stroke="#d8b65d" stroke-width="3" />
+                <path d="M24 20 C29 14 35 14 40 20" stroke="#42d6d2" stroke-width="3" fill="none" />
+                <path d="M20 45 H44" stroke="#d8b65d" stroke-width="3" />
+              </svg>
+            </div>
+          </div>
+          <div class="label">
+            <h2>Memory Gate</h2>
+            <p>Cinematic and readable on title screens. It is the most "enter the arena" direction.</p>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

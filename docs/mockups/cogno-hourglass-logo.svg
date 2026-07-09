@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" role="img" aria-labelledby="title desc">
+  <title id="title">Cogno hourglass logo</title>
+  <desc id="desc">A minimal gold hourglass seal above the Cogno wordmark with a cyan falling sand accent.</desc>
+  <defs>
+    <filter id="gold-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.2" result="blur" />
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.94 0 1 0 0 0.78 0 0 1 0 0.34 0 0 0 0.6 0" result="goldBlur" />
+      <feMerge>
+        <feMergeNode in="goldBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <style>
+      .gold {
+        stroke: #f0cf79;
+      }
+
+      .gold-dim {
+        stroke: #d8b65d;
+      }
+
+      .cyan {
+        stroke: #42d6d2;
+      }
+
+      .word {
+        fill: #f0cf79;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 88px;
+        font-weight: 500;
+        letter-spacing: 0.16em;
+      }
+    </style>
+  </defs>
+
+  <g transform="translate(450 162) scale(0.9)" filter="url(#gold-glow)">
+    <path d="M-110 -124 A166 166 0 0 1 110 -124" fill="none" class="gold-dim" stroke-width="3" stroke-linecap="round" opacity="0.55" />
+    <path d="M-110 124 A166 166 0 0 0 110 124" fill="none" class="gold-dim" stroke-width="3" stroke-linecap="round" opacity="0.55" />
+    <path d="M-148 -2 H-126 M126 -2 H148" fill="none" class="cyan" stroke-width="2" stroke-linecap="round" opacity="0.62" />
+
+    <path d="M-76 -98 H76" fill="none" class="gold" stroke-width="9" stroke-linecap="round" />
+    <path d="M-76 98 H76" fill="none" class="gold" stroke-width="9" stroke-linecap="round" />
+    <path d="M-54 -78 C-25 -48 -16 -20 0 0 C16 -20 25 -48 54 -78" fill="none" class="gold" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M-54 78 C-25 48 -16 20 0 0 C16 20 25 48 54 78" fill="none" class="gold" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+
+    <path d="M-32 -60 C-21 -43 -12 -31 -4 -20 H4 C12 -31 21 -43 32 -60Z" fill="#f0cf79" opacity="0.19" />
+    <path d="M-34 62 C-20 44 -10 36 0 30 C10 36 20 44 34 62Z" fill="#f0cf79" opacity="0.72" />
+    <path d="M0 -21 V23" fill="none" class="cyan" stroke-width="4" stroke-linecap="round" />
+    <circle cx="0" cy="0" r="5" fill="#42d6d2" />
+
+    <path d="M-24 -118 H24 M-17 118 H17" fill="none" class="cyan" stroke-width="2" stroke-linecap="round" opacity="0.7" />
+    <path d="M-10 -140 L0 -153 L10 -140" fill="none" class="gold-dim" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.62" />
+    <path d="M-10 140 L0 153 L10 140" fill="none" class="gold-dim" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.62" />
+  </g>
+
+  <text x="450" y="424" text-anchor="middle" class="word">COGNO</text>
+  <path d="M322 454 H578" fill="none" stroke="#d8b65d" stroke-width="2" stroke-linecap="round" opacity="0.72" />
+</svg>

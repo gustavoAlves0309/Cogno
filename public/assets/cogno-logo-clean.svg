@@ -1,0 +1,34 @@
+<svg width="760" height="210" viewBox="0 0 760 210" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff2b6"/>
+      <stop offset="0.36" stop-color="#efc96e"/>
+      <stop offset="0.72" stop-color="#bd8439"/>
+      <stop offset="1" stop-color="#7c5427"/>
+    </linearGradient>
+    <filter id="goldGlow" x="-30%" y="-40%" width="160%" height="180%">
+      <feGaussianBlur stdDeviation="3.1" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.88 0 1 0 0 0.62 0 0 1 0 0.18 0 0 0 0.56 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <style>
+      .letter { fill: none; stroke: url(#gold); stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; filter: url(#goldGlow); }
+      .symbol { fill: none; stroke: url(#gold); stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; filter: url(#goldGlow); }
+      .symbol-thin { fill: none; stroke: url(#gold); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.58; }
+    </style>
+  </defs>
+  <g transform="translate(36 28)">
+    <path class="letter" d="M86 18C50 18 26 45 26 84C26 123 51 150 90 150"/>
+    <g transform="translate(-44 -2) scale(1.08)">
+      <path class="symbol" d="M158 24C184 45 207 62 222 84C207 106 184 123 158 144"/>
+      <path class="symbol" d="M214 24C188 45 165 62 150 84C165 106 188 123 214 144"/>
+      <path class="symbol-thin" d="M168 84L186 68L204 84L186 100Z"/>
+    </g>
+    <path class="letter" d="M304 20C266 17 238 44 238 84C238 124 267 151 308 148C338 146 356 126 356 101H312"/>
+    <path class="letter" d="M420 148V22L510 148V22"/>
+    <ellipse class="letter" cx="628" cy="84" rx="54" ry="66"/>
+  </g>
+</svg>

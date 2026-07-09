@@ -1,0 +1,117 @@
+<svg width="1400" height="1050" viewBox="0 0 1400 1050" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff2b6"/>
+      <stop offset="0.36" stop-color="#efc96e"/>
+      <stop offset="0.72" stop-color="#bd8439"/>
+      <stop offset="1" stop-color="#7c5427"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#a9ffff"/>
+      <stop offset="1" stop-color="#27b5c7"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="50%" cy="18%" r="84%">
+      <stop offset="0" stop-color="#103541"/>
+      <stop offset="0.58" stop-color="#06131b"/>
+      <stop offset="1" stop-color="#020509"/>
+    </radialGradient>
+    <filter id="goldGlow" x="-30%" y="-40%" width="160%" height="180%">
+      <feGaussianBlur stdDeviation="3.1" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.88 0 1 0 0 0.62 0 0 1 0 0.18 0 0 0 0.56 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cyanGlow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="2.2" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.2 0 0 0 0 0.82 0 0 0 0 0.86 0 0 0 0.55 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse">
+      <path d="M42 0H0V42" fill="none" stroke="#284651" stroke-width="1" opacity="0.17"/>
+      <path d="M0 24H42" fill="none" stroke="#9c7136" stroke-width="0.8" opacity="0.07"/>
+    </pattern>
+    <style>
+      .label { font-family: Trebuchet MS, Arial, sans-serif; fill: #9bb5c0; letter-spacing: 1.5px; }
+      .caption { font-family: Trebuchet MS, Arial, sans-serif; fill: #78929d; font-size: 15px; }
+      .title { font-family: Georgia, Times New Roman, serif; fill: #f4d585; font-size: 25px; letter-spacing: 3px; }
+      .letter { fill: none; stroke: url(#gold); stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; filter: url(#goldGlow); }
+      .letterSmall { fill: none; stroke: url(#gold); stroke-width: 11; stroke-linecap: round; stroke-linejoin: round; filter: url(#goldGlow); }
+      .symbol { fill: none; stroke: url(#gold); stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; filter: url(#goldGlow); }
+      .symbolSoft { fill: none; stroke: url(#gold); stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; filter: url(#goldGlow); }
+      .symbolThin { fill: none; stroke: url(#gold); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.58; }
+      .cyan { fill: none; stroke: url(#cyan); stroke-width: 3.3; stroke-linecap: round; stroke-linejoin: round; filter: url(#cyanGlow); }
+    </style>
+    <path id="letter-c" class="letter" d="M86 18C50 18 26 45 26 84C26 123 51 150 90 150"/>
+    <path id="letter-g" class="letter" d="M322 20C284 17 256 44 256 84C256 124 285 151 326 148C356 146 374 126 374 101H330"/>
+    <path id="letter-n" class="letter" d="M442 148V22L532 148V22"/>
+    <ellipse id="letter-o" class="letter" cx="650" cy="84" rx="54" ry="66"/>
+    <g id="symbol-o">
+      <path class="symbolSoft" d="M158 24C184 45 207 62 222 84C207 106 184 123 158 144"/>
+      <path class="symbolSoft" d="M214 24C188 45 165 62 150 84C165 106 188 123 214 144"/>
+      <path class="symbolThin" d="M168 84L186 68L204 84L186 100Z" opacity="0.72"/>
+    </g>
+  </defs>
+
+  <rect width="1400" height="1050" fill="url(#bg)"/>
+  <rect width="1400" height="1050" fill="url(#grid)" opacity="0.78"/>
+  <circle cx="700" cy="98" r="410" fill="#123743" opacity="0.2"/>
+  <text x="700" y="62" text-anchor="middle" class="label" font-size="23">COGNO SYMBOL-O REFINEMENT</text>
+  <text x="700" y="96" text-anchor="middle" class="caption">the hourglass symbol replaces the first O entirely; spacing is tuned as C + symbol + GNO</text>
+
+  <g transform="translate(70 145)">
+    <rect width="1260" height="390" rx="24" fill="#06131b" opacity="0.96" stroke="#2b4c58" stroke-width="1.4"/>
+    <text x="42" y="54" class="title">A6 · SYMBOL AS O</text>
+    <text x="42" y="84" class="caption">Recommended refinement: no enclosing O. The central diamond carries the O read, and the hourglass becomes the brand's distinctive letter.</text>
+
+    <g transform="translate(150 148)">
+      <use href="#letter-c"/>
+      <use href="#symbol-o" transform="translate(-44 -2) scale(1.08)"/>
+      <use href="#letter-g" transform="translate(-18 0)"/>
+      <use href="#letter-n" transform="translate(-22 0)"/>
+      <use href="#letter-o" transform="translate(-22 0)"/>
+      <path class="cyan" d="M30 188C178 204 396 204 694 184"/>
+      <path class="symbolThin" d="M85 205C226 220 427 218 648 200"/>
+    </g>
+  </g>
+
+  <g transform="translate(70 600)">
+    <rect width="385" height="330" rx="22" fill="#06131b" opacity="0.96" stroke="#2b4c58" stroke-width="1.4"/>
+    <text x="34" y="50" class="title">A6a · TIGHT</text>
+    <text x="34" y="78" class="caption">Best for menu scale.</text>
+    <g transform="translate(42 136) scale(0.43)">
+      <use href="#letter-c"/>
+      <use href="#symbol-o" transform="translate(-44 -2) scale(1.08)"/>
+      <use href="#letter-g" transform="translate(-18 0)"/>
+      <use href="#letter-n" transform="translate(-22 0)"/>
+      <use href="#letter-o" transform="translate(-22 0)"/>
+    </g>
+  </g>
+
+  <g transform="translate(508 600)">
+    <rect width="385" height="330" rx="22" fill="#06131b" opacity="0.96" stroke="#2b4c58" stroke-width="1.4"/>
+    <text x="34" y="50" class="title">A6b · AIRY</text>
+    <text x="34" y="78" class="caption">More premium breathing room.</text>
+    <g transform="translate(35 136) scale(0.43)">
+      <use href="#letter-c"/>
+      <use href="#symbol-o" transform="translate(-28 -2) scale(1.06)"/>
+      <use href="#letter-g" transform="translate(2 0)"/>
+      <use href="#letter-n" transform="translate(2 0)"/>
+      <use href="#letter-o" transform="translate(2 0)"/>
+    </g>
+  </g>
+
+  <g transform="translate(945 600)">
+    <rect width="385" height="330" rx="22" fill="#06131b" opacity="0.96" stroke="#2b4c58" stroke-width="1.4"/>
+    <text x="34" y="50" class="title">A6c · MARK</text>
+    <text x="34" y="78" class="caption">Standalone icon candidate.</text>
+    <g transform="translate(105 120) scale(1.04)">
+      <circle cx="186" cy="84" r="81" fill="#07131b" stroke="url(#gold)" stroke-width="5" filter="url(#goldGlow)" opacity="0.9"/>
+      <use href="#symbol-o"/>
+    </g>
+  </g>
+</svg>

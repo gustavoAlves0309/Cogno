@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cogno Hourglass Logo</title>
+    <style>
+      :root {
+        --bg: #04060a;
+        --panel: #071018;
+        --gold: #f0cf79;
+        --gold-dim: #d8b65d;
+        --cyan: #42d6d2;
+        --ink: #d8e6e4;
+        --muted: #91a8b1;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(90deg, rgba(66, 214, 210, 0.055) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(216, 182, 93, 0.04) 1px, transparent 1px),
+          radial-gradient(circle at 50% -10%, rgba(240, 207, 121, 0.14), transparent 30%),
+          linear-gradient(180deg, #05070d 0%, #0a141d 48%, #030508 100%);
+        background-size: 38px 38px, 38px 38px, auto, auto;
+        font-family: "Trebuchet MS", Verdana, sans-serif;
+      }
+
+      .wrap {
+        width: min(1220px, calc(100vw - 48px));
+        margin: 0 auto;
+        padding: 42px 0 54px;
+      }
+
+      header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 28px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid rgba(216, 182, 93, 0.24);
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--gold);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 42px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+      }
+
+      .note {
+        max-width: 640px;
+        margin: 9px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .status {
+        color: #061018;
+        background: var(--gold);
+        border: 1px solid rgba(255, 226, 160, 0.72);
+        padding: 9px 12px;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1.18fr 0.82fr;
+        gap: 18px;
+        margin-top: 22px;
+      }
+
+      .panel {
+        position: relative;
+        overflow: hidden;
+        min-height: 340px;
+        border: 1px solid rgba(216, 182, 93, 0.32);
+        border-radius: 8px;
+        background:
+          radial-gradient(circle at 50% 35%, rgba(66, 214, 210, 0.08), transparent 42%),
+          linear-gradient(180deg, rgba(14, 24, 33, 0.96), rgba(5, 11, 18, 0.98));
+        box-shadow: 0 22px 48px rgba(0, 0, 0, 0.28);
+      }
+
+      .panel::before {
+        content: "";
+        position: absolute;
+        inset: 18px;
+        border: 1px solid rgba(66, 214, 210, 0.11);
+        pointer-events: none;
+      }
+
+      .main-logo {
+        display: grid;
+        place-items: center;
+        min-height: 520px;
+        padding: 34px;
+      }
+
+      .main-logo img {
+        width: min(670px, 92%);
+        height: auto;
+        filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.36));
+      }
+
+      .side {
+        display: grid;
+        gap: 18px;
+      }
+
+      .icon-panel {
+        padding: 28px;
+      }
+
+      .label {
+        position: relative;
+        margin: 0 0 20px;
+        color: var(--muted);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        z-index: 1;
+      }
+
+      .icon-row {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: end;
+        gap: 24px;
+      }
+
+      .icon-row img {
+        border-radius: 18px;
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
+      }
+
+      .phone {
+        width: 264px;
+        min-height: 492px;
+        margin: 24px auto;
+        padding: 30px 18px;
+        border: 1px solid rgba(216, 182, 93, 0.32);
+        border-radius: 26px;
+        background:
+          linear-gradient(90deg, rgba(66, 214, 210, 0.055) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(216, 182, 93, 0.04) 1px, transparent 1px),
+          #050b11;
+        background-size: 28px 28px;
+      }
+
+      .phone img {
+        display: block;
+        width: 214px;
+        margin: 38px auto 0;
+      }
+
+      .prompt {
+        margin-top: 104px;
+        color: #c9d7d6;
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-align: center;
+        text-transform: uppercase;
+        animation: pulse 1.8s ease-in-out infinite;
+      }
+
+      .rule {
+        width: 130px;
+        height: 1px;
+        margin: 22px auto 0;
+        background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+      }
+
+      .rationale {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+
+      .point {
+        padding: 22px;
+      }
+
+      h2 {
+        position: relative;
+        z-index: 1;
+        margin: 0 0 8px;
+        color: var(--gold);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 22px;
+        font-weight: 500;
+      }
+
+      p {
+        position: relative;
+        z-index: 1;
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 0.46;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <div>
+          <h1>Hourglass Logo Direction</h1>
+          <p class="note">
+            A cleaner Cogno identity built around survival time, history, and ancient ritual: one primary logo,
+            one compact mark, and a title-screen preview.
+          </p>
+        </div>
+        <div class="status">Minimal / Marked / Vector</div>
+      </header>
+
+      <section class="grid">
+        <article class="panel main-logo" aria-label="Primary logo">
+          <img src="./cogno-hourglass-logo.svg" alt="Cogno hourglass primary logo" />
+        </article>
+
+        <aside class="side">
+          <article class="panel icon-panel" aria-label="Compact mark sizes">
+            <p class="label">Compact mark scale test</p>
+            <div class="icon-row">
+              <img src="./cogno-hourglass-mark.svg" alt="Cogno hourglass icon at 128 pixels" width="128" height="128" />
+              <img src="./cogno-hourglass-mark.svg" alt="Cogno hourglass icon at 72 pixels" width="72" height="72" />
+              <img src="./cogno-hourglass-mark.svg" alt="Cogno hourglass icon at 44 pixels" width="44" height="44" />
+            </div>
+          </article>
+
+          <article class="panel" aria-label="Title screen preview">
+            <div class="phone">
+              <img src="./cogno-hourglass-logo.svg" alt="Cogno logo on title screen" />
+              <div class="rule"></div>
+              <div class="prompt">Touch anywhere to start</div>
+            </div>
+          </article>
+        </aside>
+
+        <article class="panel point">
+          <h2>Why Hourglass</h2>
+          <p>It ties survival timer, history, ruins, and inevitability into one shape. The mark explains the game faster than the eye did.</p>
+        </article>
+        <article class="panel point">
+          <h2>Why Minimal</h2>
+          <p>Thin ritual lines, one cyan sand accent, and no busy illustration. It should stay sharp on mobile and still feel premium.</p>
+        </article>
+        <article class="panel point">
+          <h2>How It Scales</h2>
+          <p>The standalone mark can become app icon, loading emblem, locked-stage badge, or a small title ornament inside the game UI.</p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

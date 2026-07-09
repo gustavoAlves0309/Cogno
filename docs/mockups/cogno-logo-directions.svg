@@ -1,0 +1,184 @@
+<svg width="1400" height="1600" viewBox="0 0 1400 1600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="goldStroke" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff1b8"/>
+      <stop offset="0.42" stop-color="#e7bf63"/>
+      <stop offset="1" stop-color="#9f6f2d"/>
+    </linearGradient>
+    <linearGradient id="sandFill" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffe7a1"/>
+      <stop offset="1" stop-color="#c58a36"/>
+    </linearGradient>
+    <linearGradient id="cyanStroke" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#9efcff"/>
+      <stop offset="1" stop-color="#2db7c9"/>
+    </linearGradient>
+    <radialGradient id="panelGlow" cx="50%" cy="28%" r="74%">
+      <stop offset="0" stop-color="#123441" stop-opacity="0.64"/>
+      <stop offset="0.58" stop-color="#07131b" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#020509" stop-opacity="1"/>
+    </radialGradient>
+    <filter id="softGoldGlow" x="-30%" y="-40%" width="160%" height="180%">
+      <feGaussianBlur stdDeviation="3.4" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.88 0 1 0 0 0.64 0 0 1 0 0.22 0 0 0 0.72 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cyanGlow" x="-30%" y="-40%" width="160%" height="180%">
+      <feGaussianBlur stdDeviation="2.8" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.16 0 0 0 0 0.82 0 0 0 0 0.86 0 0 0 0.55 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="stoneGrid" width="42" height="42" patternUnits="userSpaceOnUse">
+      <path d="M42 0H0V42" fill="none" stroke="#2a4651" stroke-width="1" opacity="0.18"/>
+      <path d="M0 24H42" fill="none" stroke="#8f6f35" stroke-width="0.8" opacity="0.08"/>
+    </pattern>
+    <style>
+      .label { font-family: Trebuchet MS, Arial, sans-serif; font-size: 19px; fill: #9bb3bd; letter-spacing: 2px; }
+      .caption { font-family: Trebuchet MS, Arial, sans-serif; font-size: 14px; fill: #69838f; letter-spacing: 0.5px; }
+      .panel-title { font-family: Georgia, serif; font-size: 25px; fill: #f4d688; letter-spacing: 4px; }
+      .word-text { font-family: Georgia, Times New Roman, serif; font-weight: 700; letter-spacing: 10px; }
+      .stroke-logo { fill: none; stroke: url(#goldStroke); stroke-width: 11; stroke-linecap: round; stroke-linejoin: round; filter: url(#softGoldGlow); }
+      .stroke-logo-thin { fill: none; stroke: url(#goldStroke); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+      .cyan { fill: none; stroke: url(#cyanStroke); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; filter: url(#cyanGlow); }
+      .cyan-thin { fill: none; stroke: url(#cyanStroke); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+      .micro { fill: #0b151b; stroke: url(#goldStroke); stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="1600" fill="#020509"/>
+  <rect width="1400" height="1600" fill="url(#stoneGrid)" opacity="0.75"/>
+  <circle cx="700" cy="130" r="420" fill="#0c2933" opacity="0.24"/>
+  <text x="700" y="72" text-anchor="middle" class="label">COGNO LOGO DIRECTIONS</text>
+  <text x="700" y="106" text-anchor="middle" class="caption">hourglass-first wordmarks, built as unified marks for title screen + compact menu use</text>
+
+  <g transform="translate(70 155)">
+    <rect width="600" height="610" rx="22" fill="url(#panelGlow)" stroke="#2d4d58" stroke-width="1.4"/>
+    <text x="38" y="52" class="panel-title">A · SINGLE STROKE</text>
+    <text x="38" y="82" class="caption">Minimal, readable, easiest to animate in Phaser.</text>
+
+    <g transform="translate(44 162)">
+      <path class="stroke-logo" d="M82 18C48 18 26 44 26 80C26 116 49 142 84 142"/>
+      <path class="stroke-logo" d="M130 22H214M130 138H214M150 38L190 80L150 122M194 38L154 80L194 122"/>
+      <path class="stroke-logo-thin" d="M140 24C120 48 120 112 140 136M204 24C224 48 224 112 204 136"/>
+      <path d="M154 46C168 58 176 66 172 76C168 66 180 58 194 46Z" fill="#f6cf76" opacity="0.22"/>
+      <path d="M150 118C164 102 180 102 194 118Z" fill="url(#sandFill)" opacity="0.92"/>
+      <path class="cyan" d="M172 62V101"/>
+      <circle cx="172" cy="82" r="5.5" fill="#8df7ff" filter="url(#cyanGlow)"/>
+
+      <path class="stroke-logo" d="M304 26C268 22 240 46 240 80C240 116 266 142 304 138C330 136 346 120 346 96H308"/>
+      <path class="stroke-logo" d="M394 138V24L472 138V24"/>
+      <ellipse class="stroke-logo" cx="548" cy="82" rx="45" ry="60"/>
+      <path class="cyan-thin" d="M22 166H596"/>
+      <path class="stroke-logo-thin" d="M64 170H238M384 170H560"/>
+    </g>
+
+    <g transform="translate(108 405) scale(0.48)">
+      <path class="stroke-logo" d="M82 18C48 18 26 44 26 80C26 116 49 142 84 142"/>
+      <path class="stroke-logo" d="M130 22H214M130 138H214M150 38L190 80L150 122M194 38L154 80L194 122"/>
+      <path class="stroke-logo" d="M304 26C268 22 240 46 240 80C240 116 266 142 304 138C330 136 346 120 346 96H308"/>
+      <path class="stroke-logo" d="M394 138V24L472 138V24"/>
+      <ellipse class="stroke-logo" cx="548" cy="82" rx="45" ry="60"/>
+    </g>
+    <text x="38" y="548" class="caption">Small-size test: keeps the hourglass legible without extra ornament.</text>
+  </g>
+
+  <g transform="translate(730 155)">
+    <rect width="600" height="610" rx="22" fill="url(#panelGlow)" stroke="#2d4d58" stroke-width="1.4"/>
+    <text x="38" y="52" class="panel-title">B · RELIC CARTOUCHE</text>
+    <text x="38" y="82" class="caption">More game-logo presence, still compact enough for mobile.</text>
+
+    <g transform="translate(54 170)">
+      <path d="M28 90C28 44 64 18 112 18H386C434 18 470 44 470 90C470 136 434 162 386 162H112C64 162 28 136 28 90Z" fill="#07121a" stroke="url(#goldStroke)" stroke-width="6" filter="url(#softGoldGlow)"/>
+      <path d="M56 90C56 60 80 42 116 42H382C418 42 442 60 442 90C442 120 418 138 382 138H116C80 138 56 120 56 90Z" fill="none" stroke="#2db7c9" stroke-width="2.6" opacity="0.75"/>
+      <text x="82" y="111" class="word-text" font-size="82" fill="url(#goldStroke)" filter="url(#softGoldGlow)">C</text>
+      <text x="232" y="111" class="word-text" font-size="82" fill="url(#goldStroke)" filter="url(#softGoldGlow)">GNO</text>
+
+      <g transform="translate(172 35)">
+        <path d="M0 0H82M0 110H82M16 12L66 55L16 98M66 12L16 55L66 98" fill="none" stroke="url(#goldStroke)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M19 18C34 28 48 38 41 52C36 39 52 28 64 18Z" fill="#f0cf79" opacity="0.2"/>
+        <path d="M15 96C30 78 52 78 67 96Z" fill="url(#sandFill)"/>
+        <path d="M41 45V70" stroke="#8df7ff" stroke-width="4" stroke-linecap="round" filter="url(#cyanGlow)"/>
+        <circle cx="41" cy="58" r="4.6" fill="#8df7ff"/>
+      </g>
+      <path d="M94 178H404" stroke="#cfa75c" stroke-width="3" stroke-linecap="round" opacity="0.64"/>
+      <path d="M146 188H352" stroke="#2db7c9" stroke-width="2" stroke-linecap="round" opacity="0.45"/>
+    </g>
+
+    <g transform="translate(118 418) scale(0.48)">
+      <path d="M28 90C28 44 64 18 112 18H386C434 18 470 44 470 90C470 136 434 162 386 162H112C64 162 28 136 28 90Z" fill="#07121a" stroke="url(#goldStroke)" stroke-width="6" filter="url(#softGoldGlow)"/>
+      <text x="82" y="111" class="word-text" font-size="82" fill="url(#goldStroke)">C</text>
+      <text x="232" y="111" class="word-text" font-size="82" fill="url(#goldStroke)">GNO</text>
+      <g transform="translate(172 35)">
+        <path d="M0 0H82M0 110H82M16 12L66 55L16 98M66 12L16 55L66 98" fill="none" stroke="url(#goldStroke)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M15 96C30 78 52 78 67 96Z" fill="url(#sandFill)"/>
+      </g>
+    </g>
+    <text x="38" y="548" class="caption">Small-size test: strongest title-screen presence, slightly heavier UI footprint.</text>
+  </g>
+
+  <g transform="translate(70 835)">
+    <rect width="600" height="610" rx="22" fill="url(#panelGlow)" stroke="#2d4d58" stroke-width="1.4"/>
+    <text x="38" y="52" class="panel-title">C · SANDSCRIPT</text>
+    <text x="38" y="82" class="caption">More fluid and mystical; the hourglass becomes the word's spine.</text>
+
+    <g transform="translate(42 168)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M64 130C26 122 20 74 50 44C80 14 124 20 142 48" stroke="url(#goldStroke)" stroke-width="12" filter="url(#softGoldGlow)"/>
+      <path d="M138 48C164 88 116 100 146 136C172 168 230 144 228 88C226 28 156 22 148 82" stroke="url(#goldStroke)" stroke-width="10" filter="url(#softGoldGlow)"/>
+      <path d="M272 34C238 48 232 112 270 134C310 158 358 124 344 82H306" stroke="url(#goldStroke)" stroke-width="11" filter="url(#softGoldGlow)"/>
+      <path d="M386 138C382 98 384 62 394 28C430 76 454 106 482 138C478 98 480 62 490 28" stroke="url(#goldStroke)" stroke-width="10" filter="url(#softGoldGlow)"/>
+      <path d="M548 30C502 34 498 134 548 138C598 134 596 30 548 30Z" stroke="url(#goldStroke)" stroke-width="10" filter="url(#softGoldGlow)"/>
+
+      <path d="M177 28C214 42 214 122 177 142C140 122 140 42 177 28Z" stroke="url(#goldStroke)" stroke-width="5.4" opacity="0.88"/>
+      <path d="M148 48H206M148 124H206M158 58L196 86L158 114M196 58L158 86L196 114" stroke="url(#goldStroke)" stroke-width="5.4"/>
+      <path d="M164 111C176 98 188 98 200 111Z" fill="url(#sandFill)" stroke="none"/>
+      <path d="M177 66V104" stroke="#8df7ff" stroke-width="3.8" filter="url(#cyanGlow)"/>
+      <path d="M28 158C168 178 342 176 590 152" stroke="#2db7c9" stroke-width="2.8" opacity="0.58"/>
+      <path d="M42 168C196 198 386 192 566 168" stroke="#cfa75c" stroke-width="2.3" opacity="0.5"/>
+    </g>
+
+    <g transform="translate(102 418) scale(0.48)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M64 130C26 122 20 74 50 44C80 14 124 20 142 48" stroke="url(#goldStroke)" stroke-width="12"/>
+      <path d="M138 48C164 88 116 100 146 136C172 168 230 144 228 88C226 28 156 22 148 82" stroke="url(#goldStroke)" stroke-width="10"/>
+      <path d="M272 34C238 48 232 112 270 134C310 158 358 124 344 82H306" stroke="url(#goldStroke)" stroke-width="11"/>
+      <path d="M386 138C382 98 384 62 394 28C430 76 454 106 482 138C478 98 480 62 490 28" stroke="url(#goldStroke)" stroke-width="10"/>
+      <path d="M548 30C502 34 498 134 548 138C598 134 596 30 548 30Z" stroke="url(#goldStroke)" stroke-width="10"/>
+    </g>
+    <text x="38" y="548" class="caption">Small-size test: most distinctive, but the hardest to keep perfectly crisp.</text>
+  </g>
+
+  <g transform="translate(730 835)">
+    <rect width="600" height="610" rx="22" fill="url(#panelGlow)" stroke="#2d4d58" stroke-width="1.4"/>
+    <text x="38" y="52" class="panel-title">D · CHRONO SEAL</text>
+    <text x="38" y="82" class="caption">A compact emblem-wordmark hybrid, strong for app icon and menus.</text>
+
+    <g transform="translate(52 158)">
+      <g transform="translate(186 4)">
+        <circle cx="98" cy="98" r="92" fill="#07121a" stroke="url(#goldStroke)" stroke-width="5" filter="url(#softGoldGlow)"/>
+        <circle cx="98" cy="98" r="70" fill="none" stroke="#2db7c9" stroke-width="2.6" opacity="0.75"/>
+        <path d="M58 42H138M58 154H138M73 58L123 98L73 138M123 58L73 98L123 138" fill="none" stroke="url(#goldStroke)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M75 132C90 114 106 114 121 132Z" fill="url(#sandFill)"/>
+        <path d="M98 72V126" stroke="#8df7ff" stroke-width="4" stroke-linecap="round" filter="url(#cyanGlow)"/>
+        <circle cx="98" cy="99" r="5" fill="#8df7ff"/>
+        <path d="M22 98H-48M244 98H174" stroke="url(#goldStroke)" stroke-width="4" stroke-linecap="round"/>
+      </g>
+
+      <text x="20" y="286" class="word-text" font-size="88" fill="url(#goldStroke)" filter="url(#softGoldGlow)">COGNO</text>
+      <path d="M82 306H430" stroke="#2db7c9" stroke-width="2.8" stroke-linecap="round" opacity="0.58"/>
+      <path d="M142 318H370" stroke="#cfa75c" stroke-width="2.6" stroke-linecap="round" opacity="0.54"/>
+    </g>
+
+    <g transform="translate(144 430) scale(0.44)">
+      <circle cx="98" cy="98" r="92" fill="#07121a" stroke="url(#goldStroke)" stroke-width="5" filter="url(#softGoldGlow)"/>
+      <path d="M58 42H138M58 154H138M73 58L123 98L73 138M123 58L73 98L123 138" fill="none" stroke="url(#goldStroke)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M75 132C90 114 106 114 121 132Z" fill="url(#sandFill)"/>
+      <text x="236" y="126" class="word-text" font-size="88" fill="url(#goldStroke)">COGNO</text>
+    </g>
+    <text x="38" y="548" class="caption">Small-size test: best reusable mark; less integrated than A/C as a pure wordmark.</text>
+  </g>
+</svg>

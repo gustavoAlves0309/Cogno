@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-export type GameMode = "menu" | "real" | "test" | "victory" | "defeat";
+export type GameMode = "title" | "menu" | "real" | "test" | "victory" | "defeat";
 
 export interface ArenaBounds {
   x: number;
@@ -16,6 +16,17 @@ export interface PlayerState {
   invulnerableUntil: number;
 }
 
+export type AttackCue =
+  | "scarab"
+  | "nile"
+  | "wadjet"
+  | "horus"
+  | "sands"
+  | "maat"
+  | "glyph"
+  | "army"
+  | "phase";
+
 export interface AttackContext {
   scene: Phaser.Scene;
   arena: ArenaBounds;
@@ -23,6 +34,7 @@ export interface AttackContext {
   bossPosition: Phaser.Math.Vector2;
   stageWidth: number;
   stageHeight: number;
+  playCue?: (cue: AttackCue) => void;
 }
 
 export interface Attack {

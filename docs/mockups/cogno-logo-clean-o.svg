@@ -1,0 +1,134 @@
+<svg width="1400" height="1100" viewBox="0 0 1400 1100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff2b6"/>
+      <stop offset="0.36" stop-color="#efc96e"/>
+      <stop offset="0.72" stop-color="#bd8439"/>
+      <stop offset="1" stop-color="#7c5427"/>
+    </linearGradient>
+    <linearGradient id="sand" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff0a6"/>
+      <stop offset="1" stop-color="#c28531"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#a9ffff"/>
+      <stop offset="1" stop-color="#27b5c7"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="50%" cy="20%" r="82%">
+      <stop offset="0" stop-color="#113541"/>
+      <stop offset="0.58" stop-color="#06131b"/>
+      <stop offset="1" stop-color="#020509"/>
+    </radialGradient>
+    <filter id="goldGlow" x="-30%" y="-40%" width="160%" height="180%">
+      <feGaussianBlur stdDeviation="3.2" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.88 0 1 0 0 0.62 0 0 1 0 0.18 0 0 0 0.58 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cyanGlow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="2.2" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.2 0 0 0 0 0.82 0 0 0 0 0.86 0 0 0 0.55 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse">
+      <path d="M42 0H0V42" fill="none" stroke="#284651" stroke-width="1" opacity="0.17"/>
+      <path d="M0 24H42" fill="none" stroke="#9c7136" stroke-width="0.8" opacity="0.07"/>
+    </pattern>
+    <style>
+      .label { font-family: Trebuchet MS, Arial, sans-serif; fill: #9bb5c0; letter-spacing: 1.5px; }
+      .caption { font-family: Trebuchet MS, Arial, sans-serif; fill: #78929d; font-size: 15px; }
+      .title { font-family: Georgia, Times New Roman, serif; fill: #f4d585; font-size: 25px; letter-spacing: 3px; }
+      .letter { fill: none; stroke: url(#gold); stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; filter: url(#goldGlow); }
+      .letterThin { fill: none; stroke: url(#gold); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.64; }
+      .hourglass { fill: none; stroke: url(#gold); stroke-width: 6.5; stroke-linecap: round; stroke-linejoin: round; filter: url(#goldGlow); }
+      .hourglassThin { fill: none; stroke: url(#gold); stroke-width: 4.2; stroke-linecap: round; stroke-linejoin: round; }
+      .cyan { fill: none; stroke: url(#cyan); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; filter: url(#cyanGlow); }
+    </style>
+    <path id="c-letter" class="letter" d="M86 18C50 18 26 45 26 84C26 123 51 150 90 150"/>
+    <path id="g-letter" class="letter" d="M338 20C300 17 272 44 272 84C272 124 301 151 343 148C373 146 392 126 392 100H347"/>
+    <path id="n-letter" class="letter" d="M462 148V22L552 148V22"/>
+    <ellipse id="last-o-letter" class="letter" cx="672" cy="84" rx="54" ry="66"/>
+  </defs>
+
+  <rect width="1400" height="1100" fill="url(#bg)"/>
+  <rect width="1400" height="1100" fill="url(#grid)" opacity="0.78"/>
+  <circle cx="700" cy="105" r="420" fill="#123743" opacity="0.2"/>
+  <text x="700" y="64" text-anchor="middle" class="label" font-size="23">COGNO CLEAN-O REFINEMENT</text>
+  <text x="700" y="98" text-anchor="middle" class="caption">no horizontal bars on the hourglass O, mirrored center geometry, no loose arcs</text>
+
+  <g transform="translate(70 148)">
+    <rect width="1260" height="430" rx="24" fill="#06131b" opacity="0.96" stroke="#2b4c58" stroke-width="1.4"/>
+    <text x="42" y="54" class="title">A5 · CLEAN RING O</text>
+    <text x="42" y="84" class="caption">Recommended revision: the second O is a clean letter first; the hourglass is symmetrical inner structure, not a separate badge.</text>
+
+    <g transform="translate(108 162)">
+      <use href="#c-letter"/>
+      <ellipse class="letter" cx="188" cy="84" rx="54" ry="66"/>
+      <path class="hourglass" d="M160 40L216 84L160 128M216 40L160 84L216 128"/>
+      <path d="M170 52C180 60 196 60 206 52L188 76Z" fill="url(#sand)" opacity="0.88"/>
+      <path d="M168 118C180 104 196 104 208 118Z" fill="url(#sand)" opacity="0.96"/>
+      <path class="cyan" d="M188 74V96"/>
+      <use href="#g-letter"/>
+      <use href="#n-letter"/>
+      <use href="#last-o-letter"/>
+
+      <path class="cyan" d="M28 187C190 204 410 203 728 183"/>
+      <path class="letterThin" d="M82 204C224 220 426 218 680 199"/>
+    </g>
+  </g>
+
+  <g transform="translate(70 625)">
+    <rect width="385" height="345" rx="22" fill="#06131b" opacity="0.96" stroke="#2b4c58" stroke-width="1.4"/>
+    <text x="34" y="50" class="title">A5a · EMPTY</text>
+    <text x="34" y="78" class="caption">Most logo-like, least literal.</text>
+
+    <g transform="translate(44 143) scale(0.43)">
+      <use href="#c-letter"/>
+      <ellipse class="letter" cx="188" cy="84" rx="54" ry="66"/>
+      <path class="hourglass" d="M160 40L216 84L160 128M216 40L160 84L216 128"/>
+      <use href="#g-letter"/>
+      <use href="#n-letter"/>
+      <use href="#last-o-letter"/>
+    </g>
+  </g>
+
+  <g transform="translate(508 625)">
+    <rect width="385" height="345" rx="22" fill="#06131b" opacity="0.96" stroke="#2b4c58" stroke-width="1.4"/>
+    <text x="34" y="50" class="title">A5b · SAND</text>
+    <text x="34" y="78" class="caption">More readable as hourglass.</text>
+
+    <g transform="translate(44 143) scale(0.43)">
+      <use href="#c-letter"/>
+      <ellipse class="letter" cx="188" cy="84" rx="54" ry="66"/>
+      <path class="hourglass" d="M160 40L216 84L160 128M216 40L160 84L216 128"/>
+      <path d="M170 52C180 60 196 60 206 52L188 76Z" fill="url(#sand)" opacity="0.88"/>
+      <path d="M168 118C180 104 196 104 208 118Z" fill="url(#sand)" opacity="0.96"/>
+      <use href="#g-letter"/>
+      <use href="#n-letter"/>
+      <use href="#last-o-letter"/>
+    </g>
+  </g>
+
+  <g transform="translate(945 625)">
+    <rect width="385" height="345" rx="22" fill="#06131b" opacity="0.96" stroke="#2b4c58" stroke-width="1.4"/>
+    <text x="34" y="50" class="title">A5c · FLOW</text>
+    <text x="34" y="78" class="caption">Tiny cyan time-flow accent.</text>
+
+    <g transform="translate(44 143) scale(0.43)">
+      <use href="#c-letter"/>
+      <ellipse class="letter" cx="188" cy="84" rx="54" ry="66"/>
+      <path class="hourglass" d="M160 40L216 84L160 128M216 40L160 84L216 128"/>
+      <path d="M170 52C180 60 196 60 206 52L188 76Z" fill="url(#sand)" opacity="0.88"/>
+      <path d="M168 118C180 104 196 104 208 118Z" fill="url(#sand)" opacity="0.96"/>
+      <path class="cyan" d="M188 72V98"/>
+      <use href="#g-letter"/>
+      <use href="#n-letter"/>
+      <use href="#last-o-letter"/>
+    </g>
+  </g>
+</svg>

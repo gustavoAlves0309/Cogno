@@ -1,0 +1,143 @@
+<svg width="1400" height="1120" viewBox="0 0 1400 1120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff4bd"/>
+      <stop offset="0.36" stop-color="#ecc86f"/>
+      <stop offset="0.7" stop-color="#c4913f"/>
+      <stop offset="1" stop-color="#81592b"/>
+    </linearGradient>
+    <linearGradient id="sand" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff1ad"/>
+      <stop offset="1" stop-color="#c68a33"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#a7ffff"/>
+      <stop offset="1" stop-color="#24afc2"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="50%" cy="20%" r="82%">
+      <stop offset="0" stop-color="#103441"/>
+      <stop offset="0.55" stop-color="#06131b"/>
+      <stop offset="1" stop-color="#020509"/>
+    </radialGradient>
+    <filter id="goldGlow" x="-25%" y="-40%" width="150%" height="180%">
+      <feGaussianBlur stdDeviation="3.2" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.9 0 1 0 0 0.66 0 0 1 0 0.2 0 0 0 0.58 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cyanGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.4" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.18 0 0 0 0 0.86 0 0 0 0 0.88 0 0 0 0.62 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse">
+      <path d="M42 0H0V42" fill="none" stroke="#27454f" stroke-width="1" opacity="0.18"/>
+      <path d="M0 25H42" fill="none" stroke="#9b7336" stroke-width="0.8" opacity="0.08"/>
+    </pattern>
+    <style>
+      .ui { font-family: Trebuchet MS, Arial, sans-serif; fill: #91adba; letter-spacing: 1.5px; }
+      .title { font-family: Georgia, Times New Roman, serif; fill: #f4d586; letter-spacing: 3px; font-size: 25px; }
+      .caption { font-family: Trebuchet MS, Arial, sans-serif; fill: #78939d; font-size: 15px; }
+      .logoStroke { fill: none; stroke: url(#gold); stroke-width: 13; stroke-linecap: round; stroke-linejoin: round; filter: url(#goldGlow); }
+      .logoStrokeMid { fill: none; stroke: url(#gold); stroke-width: 8.5; stroke-linecap: round; stroke-linejoin: round; filter: url(#goldGlow); }
+      .logoStrokeThin { fill: none; stroke: url(#gold); stroke-width: 4.4; stroke-linecap: round; stroke-linejoin: round; }
+      .cyanStroke { fill: none; stroke: url(#cyan); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; filter: url(#cyanGlow); }
+    </style>
+  </defs>
+
+  <rect width="1400" height="1120" fill="url(#bg)"/>
+  <rect width="1400" height="1120" fill="url(#grid)" opacity="0.75"/>
+  <circle cx="700" cy="120" r="420" fill="#143744" opacity="0.2"/>
+  <text x="700" y="68" text-anchor="middle" class="ui" font-size="23">REFINED OPTION A</text>
+  <text x="700" y="102" text-anchor="middle" class="caption">same clean direction, with stronger proportions and a more unified hourglass wordmark</text>
+
+  <g transform="translate(70 150)">
+    <rect width="1260" height="405" rx="24" fill="#06131b" opacity="0.96" stroke="#2b4b58" stroke-width="1.4"/>
+    <text x="42" y="54" class="title">A1 · BALANCED WORDMARK</text>
+    <text x="42" y="84" class="caption">Recommended: cleanest silhouette, readable on mobile, easiest to animate.</text>
+
+    <g transform="translate(102 150)">
+      <path class="logoStroke" d="M86 18C51 18 27 45 27 84C27 123 52 150 90 150"/>
+
+      <g transform="translate(144 9)">
+        <path class="logoStrokeMid" d="M10 12H112M10 138H112"/>
+        <path class="logoStrokeMid" d="M32 27L90 75L32 123"/>
+        <path class="logoStrokeMid" d="M90 27L32 75L90 123"/>
+        <path class="logoStrokeThin" d="M23 14C7 43 7 107 23 136M99 14C115 43 115 107 99 136"/>
+        <path d="M35 38C51 52 68 63 61 76C56 63 74 52 88 38Z" fill="#f3ce76" opacity="0.18"/>
+        <path d="M31 119C46 99 76 99 91 119Z" fill="url(#sand)" opacity="0.94"/>
+        <path class="cyanStroke" d="M61 53V102"/>
+        <circle cx="61" cy="78" r="6.2" fill="#8df7ff" filter="url(#cyanGlow)"/>
+      </g>
+
+      <path class="logoStroke" d="M340 20C301 17 274 44 274 84C274 124 302 151 342 148C371 146 391 126 391 100H346"/>
+      <path class="logoStroke" d="M459 148V22L546 148V22"/>
+      <ellipse class="logoStroke" cx="662" cy="84" rx="53" ry="66"/>
+
+      <path class="cyanStroke" d="M28 185C190 204 410 203 724 183"/>
+      <path class="logoStrokeThin" d="M80 202C220 220 424 218 676 199" opacity="0.56"/>
+    </g>
+  </g>
+
+  <g transform="translate(70 600)">
+    <rect width="385" height="370" rx="22" fill="#06131b" opacity="0.96" stroke="#2b4b58" stroke-width="1.4"/>
+    <text x="34" y="50" class="title">A2 · SHARPER</text>
+    <text x="34" y="78" class="caption">More ancient/relic edge.</text>
+
+    <g transform="translate(42 145) scale(0.43)">
+      <path class="logoStroke" d="M86 18C51 18 27 45 27 84C27 123 52 150 90 150"/>
+      <g transform="translate(144 9)">
+        <path class="logoStrokeMid" d="M7 12H115M7 138H115"/>
+        <path class="logoStrokeMid" d="M28 24L94 75L28 126M94 24L28 75L94 126"/>
+        <path d="M33 118C50 96 72 96 89 118Z" fill="url(#sand)" opacity="0.94"/>
+        <path class="cyanStroke" d="M61 52V103"/>
+        <circle cx="61" cy="78" r="6.2" fill="#8df7ff"/>
+      </g>
+      <path class="logoStroke" d="M340 20C301 17 274 44 274 84C274 124 302 151 342 148C371 146 391 126 391 100H346"/>
+      <path class="logoStroke" d="M459 148V22L546 148V22"/>
+      <ellipse class="logoStroke" cx="662" cy="84" rx="53" ry="66"/>
+    </g>
+  </g>
+
+  <g transform="translate(508 600)">
+    <rect width="385" height="370" rx="22" fill="#06131b" opacity="0.96" stroke="#2b4b58" stroke-width="1.4"/>
+    <text x="34" y="50" class="title">A3 · FLUID</text>
+    <text x="34" y="78" class="caption">Softer and more premium.</text>
+
+    <g transform="translate(40 145) scale(0.43)">
+      <path class="logoStroke" d="M90 18C48 18 26 47 28 85C30 124 55 150 94 150"/>
+      <g transform="translate(145 9)">
+        <path class="logoStrokeMid" d="M16 12C42 18 80 18 106 12M16 138C42 132 80 132 106 138"/>
+        <path class="logoStrokeMid" d="M33 29C53 48 73 57 90 75C71 94 53 102 33 121"/>
+        <path class="logoStrokeMid" d="M89 29C69 48 49 57 32 75C51 94 69 102 89 121"/>
+        <path d="M31 118C46 101 76 101 91 118Z" fill="url(#sand)" opacity="0.94"/>
+        <path class="cyanStroke" d="M61 54V101"/>
+        <circle cx="61" cy="78" r="6.2" fill="#8df7ff"/>
+      </g>
+      <path class="logoStroke" d="M342 20C300 17 274 45 274 84C274 123 302 151 344 148C372 145 391 126 392 102H347"/>
+      <path class="logoStroke" d="M459 148C458 105 459 64 466 22C501 68 526 105 546 148C545 106 546 64 553 22"/>
+      <ellipse class="logoStroke" cx="665" cy="84" rx="53" ry="66"/>
+    </g>
+  </g>
+
+  <g transform="translate(945 600)">
+    <rect width="385" height="370" rx="22" fill="#06131b" opacity="0.96" stroke="#2b4b58" stroke-width="1.4"/>
+    <text x="34" y="50" class="title">A4 · COMPACT</text>
+    <text x="34" y="78" class="caption">Best for menu/app icon scale.</text>
+
+    <g transform="translate(44 140)">
+      <circle cx="94" cy="83" r="72" fill="#07131b" stroke="url(#gold)" stroke-width="5" filter="url(#goldGlow)"/>
+      <path class="cyanStroke" d="M37 83H-3M191 83H151"/>
+      <path d="M57 35H131M57 131H131M72 48L116 83L72 118M116 48L72 83L116 118" fill="none" stroke="url(#gold)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M70 115C83 100 105 100 118 115Z" fill="url(#sand)"/>
+      <path class="cyanStroke" d="M94 63V103"/>
+      <circle cx="94" cy="83" r="5.4" fill="#8df7ff"/>
+      <text x="194" y="100" font-family="Georgia, Times New Roman, serif" font-size="39" font-weight="700" fill="url(#gold)" filter="url(#goldGlow)" letter-spacing="3">COGNO</text>
+    </g>
+  </g>
+</svg>
