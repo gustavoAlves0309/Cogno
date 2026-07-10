@@ -23,13 +23,13 @@ The current circular core remains centered on the exact gameplay position and pr
 
 - A memory glyph derived from the COGNO diamond motif inside the core.
 - A luminous outer shell with small openings and a slow orbital highlight.
-- Short trails opposite the movement direction.
+- Five small, detached energy fragments behind the movement direction. The first fragment begins beyond the outer shell; the remaining fragments follow a subtle curve with decreasing size and opacity.
 - Subtle stretch along the movement axis, capped so the player remains easy to locate.
 
 ### Player States
 
 - **Idle:** slow breathing, orbiting highlight, and a fixed small set of motes.
-- **Moving:** the shell and glyph orient to movement, the body stretches slightly, and trails respond to speed.
+- **Moving:** the shell and glyph orient to movement, the body stretches slightly, and detached fragments ease in with speed. No line or ribbon connects the fragments to the player, preventing the effect from reading as a tail.
 - **Damaged:** a brief squash, visible fracture lines, and an outward ring at the moment damage is received.
 - **Invulnerable:** translucent positional echoes replace the current alpha-only blinking while the solid core remains readable.
 
