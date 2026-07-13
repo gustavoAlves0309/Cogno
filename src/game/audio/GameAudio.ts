@@ -7,15 +7,42 @@ type AudioCue =
   | "death"
   | "victory";
 
+export type LeonardoCue =
+  | "ink"
+  | "wing"
+  | "bridge"
+  | "gear"
+  | "pulse"
+  | "sfumato";
+
+interface MusicVoice {
+  source: AudioBufferSourceNode;
+  gain: GainNode;
+  phase: number;
+  stopScheduled: boolean;
+}
+
+const MUSIC_TRACKS = [
+  "/audio/cleopatra-b2-phase1.wav",
+  "/audio/cleopatra-b2-phase2.wav",
+  "/audio/cleopatra-b2-phase3.wav",
+  "/audio/cleopatra-b2-ultimate.wav",
+  "/audio/cleopatra-b2-finale.wav",
+] as const;
+const MUSIC_VOLUME = 0.42;
+const MUSIC_FADE_SECONDS = 1.15;
+
 export class GameAudio {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
-  private musicTimer: number | null = null;
   private musicPhase = 0;
-  private musicStep = 0;
+  private musicBuffers: AudioBuffer[] = [];
+  private activeMusicVoice: MusicVoice | null = null;
+  private readonly musicVoices = new Set<MusicVoice>();
+  private musicLoadPromise: Promise<AudioBuffer[]> | null = null;
   private wantsMusic = false;
   private cueGainActive = false;
-  private readonly cueGainMultiplier = 2.8;
+  private readonly cueGainMultiplier = 3.15;
 
   unlock(): void {
     if (this.context) {
@@ -32,9 +59,9 @@ export class GameAudio {
 
     this.context = new AudioContextCtor();
     this.master = this.context.createGain();
-    this.master.gain.value = 0.72;
+    this.master.gain.value = 0.78;
     this.master.connect(this.context.destination);
-    this.playTone(440, 0.035, "sine", 0, 0.03);
+    this.playTone(440, 0.035, "sine", 0, 0.022);
 
     if (this.wantsMusic) {
       this.startMusic();
@@ -44,80 +71,196 @@ export class GameAudio {
   startMusic(): void {
     this.wantsMusic = true;
 
-    if (!this.context || !this.master || this.musicTimer !== null) {
+    if (!this.context || !this.master) {
       return;
     }
 
     void this.context.resume();
-    this.musicStep = 0;
-
-    this.musicTimer = window.setInterval(() => {
-      this.playMusicStep();
-    }, 230);
+    void this.ensureMusicPlayback();
   }
 
   stopMusic(): void {
     this.wantsMusic = false;
 
-    if (this.musicTimer !== null) {
-      window.clearInterval(this.musicTimer);
-      this.musicTimer = null;
+    if (!this.context) {
+      return;
+    }
+
+    const now = this.context.currentTime;
+    this.activeMusicVoice = null;
+    for (const voice of this.musicVoices) {
+      this.fadeOutMusicVoice(voice, now, 0.28);
     }
   }
 
-  setPhase(phase: number): void {
-    this.musicPhase = phase;
+  playLeonardoCue(cue: LeonardoCue): void {
+    if (!this.context || !this.master) {
+      return;
+    }
+
+    void this.context.resume();
+    this.cueGainActive = true;
+    try {
+      switch (cue) {
+        case "ink":
+          this.playNoise(0.06, 2800, 0.008);
+          this.playTone(470, 0.055, "triangle", 0.018, 0.012);
+          this.playTone(620, 0.045, "triangle", 0.072, 0.01);
+          break;
+        case "wing":
+          this.playToneSlide(760, 390, 0.22, "sine", 0, 0.016);
+          this.playNoise(0.12, 3600, 0.006, 0.04);
+          break;
+        case "bridge":
+          this.playTone(174, 0.16, "triangle", 0, 0.022);
+          this.playTone(261, 0.13, "triangle", 0.08, 0.015);
+          break;
+        case "gear":
+          this.playTone(118, 0.07, "square", 0, 0.012);
+          this.playTone(176, 0.07, "square", 0.07, 0.01);
+          this.playTone(236, 0.07, "square", 0.14, 0.008);
+          break;
+        case "pulse":
+          this.playTone(92, 0.16, "sine", 0, 0.026);
+          this.playTone(184, 0.08, "triangle", 0.075, 0.011);
+          break;
+        case "sfumato":
+          this.playToneSlide(520, 370, 0.28, "sine", 0, 0.012);
+          this.playNoise(0.2, 720, 0.005, 0.035);
+          break;
+      }
+    } finally {
+      this.cueGainActive = false;
+    }
   }
 
-  private playMusicStep(): void {
-    const phase = Math.max(0, Math.min(3, Math.floor(this.musicPhase)));
-    const step = this.musicStep % 32;
-    const bar = Math.floor(step / 8);
-    const roots = [
-      [98, 87.31, 110, 92.5],
-      [110, 98, 123.47, 87.31],
-      [123.47, 110, 98, 146.83],
-      [130.81, 123.47, 146.83, 110],
-    ];
-    const root = roots[phase][bar] ?? roots[0][0];
-    const bassPattern = [1, 0, 1.5, 0, 1.25, 0, 1.5, 0];
-    const melodyPatterns = [
-      [2, 0, 2.5, 0, 2.25, 0, 3, 0, 2, 0, 2.5, 3, 0, 2.25, 0, 1.5],
-      [2, 0, 2.25, 2.5, 0, 3, 0, 2.5, 1.5, 0, 2, 0, 2.25, 0, 3, 0],
-      [2.5, 0, 3, 0, 2.25, 2, 0, 1.5, 2, 0, 2.5, 0, 3, 3.75, 0, 2],
-      [3, 0, 2.5, 3.75, 0, 2.25, 3, 0, 2.5, 3, 0, 4, 2.25, 0, 3.75, 0],
-    ];
-    const bass = bassPattern[step % bassPattern.length];
-    const melody = melodyPatterns[phase][step % 16];
-    const phraseAccent = Math.floor(this.musicStep / 32) % 4;
-
-    if (step % 8 === 0) {
-      this.playMusicTone(root * 0.5, 1.7, "sine", 0, 0.04 + phase * 0.006);
-      this.playMusicTone(root, 0.42, "triangle", 0.015, 0.056 + phase * 0.006);
-    } else if (bass > 0 && step % 2 === 0) {
-      this.playMusicTone(root * bass, 0.16, "triangle", 0, 0.035 + phase * 0.004);
+  setPhase(phase: number, restart = false): void {
+    const nextPhase = Math.max(0, Math.min(MUSIC_TRACKS.length - 1, Math.floor(phase)));
+    if (this.musicPhase === nextPhase && !restart) {
+      return;
     }
 
-    if (melody > 0 && (step + phraseAccent) % (phase >= 2 ? 2 : 3) !== 1) {
-      const variation = phraseAccent === 3 && step > 20 ? 1.122 : 1;
-      this.playMusicTone(root * melody * variation, 0.11, "triangle", 0.025, 0.026 + phase * 0.004);
+    this.musicPhase = nextPhase;
+    if (this.wantsMusic) {
+      void this.ensureMusicPlayback(restart);
+    }
+  }
+
+  private async ensureMusicPlayback(restart = false): Promise<void> {
+    if (!this.context || !this.master) {
+      return;
     }
 
-    if (step % 8 === 0 || (phase >= 3 && step % 4 === 0)) {
-      this.playMusicNoise(0.055, 720 + phase * 140, 0.022 + phase * 0.004);
+    const buffers = await this.loadMusicBuffers();
+    if (!this.context || !this.master || !this.wantsMusic || buffers.length !== MUSIC_TRACKS.length) {
+      return;
     }
 
-    if (step % 8 === 4) {
-      this.playMusicNoise(0.07, 2200 + phase * 360, 0.018 + phase * 0.003);
-      this.playMusicTone(root * 2.01, 0.09, "sine", 0.018, 0.022);
+    const phase = Math.max(0, Math.min(MUSIC_TRACKS.length - 1, Math.floor(this.musicPhase)));
+    if (this.activeMusicVoice?.phase === phase && !restart) {
+      return;
     }
 
-    if (phase >= 2 && step % 16 === 14) {
-      this.playMusicTone(root * 3.75, 0.14, "triangle", 0, 0.025);
-      this.playMusicTone(root * 5, 0.1, "sine", 0.08, 0.018);
+    this.switchMusicTrack(phase, this.activeMusicVoice ? MUSIC_FADE_SECONDS : 0.18);
+  }
+
+  private loadMusicBuffers(): Promise<AudioBuffer[]> {
+    if (this.musicBuffers.length === MUSIC_TRACKS.length) {
+      return Promise.resolve(this.musicBuffers);
     }
 
-    this.musicStep += 1;
+    if (this.musicLoadPromise) {
+      return this.musicLoadPromise;
+    }
+
+    if (!this.context) {
+      return Promise.resolve([]);
+    }
+
+    this.musicLoadPromise = Promise.all(
+      MUSIC_TRACKS.map(async (track) => {
+        try {
+          const response = await fetch(track);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          const data = await response.arrayBuffer();
+          return this.context!.decodeAudioData(data);
+        } catch (error) {
+          console.warn(`[GameAudio] Failed to load soundtrack asset: ${track}`, error);
+          throw error;
+        }
+      }),
+    ).then((buffers) => {
+      this.musicBuffers = buffers;
+      return buffers;
+    }).catch(() => {
+      this.musicLoadPromise = null;
+      return [];
+    });
+
+    return this.musicLoadPromise;
+  }
+
+  private switchMusicTrack(phase: number, fadeSeconds: number): void {
+    if (!this.context || !this.master) {
+      return;
+    }
+
+    const buffer = this.musicBuffers[phase];
+    if (!buffer) {
+      return;
+    }
+
+    const startAt = this.context.currentTime + 0.03;
+    const source = this.context.createBufferSource();
+    const gain = this.context.createGain();
+    const outgoing = this.activeMusicVoice;
+    const voice: MusicVoice = { source, gain, phase, stopScheduled: false };
+
+    source.buffer = buffer;
+    source.loop = true;
+    source.loopStart = 0;
+    source.loopEnd = buffer.duration;
+    gain.gain.setValueAtTime(0.0001, startAt);
+    gain.gain.linearRampToValueAtTime(MUSIC_VOLUME, startAt + fadeSeconds);
+    source.connect(gain);
+    gain.connect(this.master);
+    source.onended = () => this.cleanupMusicVoice(voice);
+    source.start(startAt, 0);
+
+    this.musicVoices.add(voice);
+    this.activeMusicVoice = voice;
+
+    if (outgoing) {
+      this.fadeOutMusicVoice(outgoing, startAt, fadeSeconds);
+    }
+  }
+
+  private fadeOutMusicVoice(voice: MusicVoice, at: number, fadeSeconds: number): void {
+    voice.gain.gain.cancelScheduledValues(at);
+    voice.gain.gain.setValueAtTime(Math.max(0.0001, voice.gain.gain.value), at);
+    voice.gain.gain.linearRampToValueAtTime(0.0001, at + fadeSeconds);
+
+    if (voice.stopScheduled) {
+      return;
+    }
+
+    voice.stopScheduled = true;
+    try {
+      voice.source.stop(at + fadeSeconds + 0.06);
+    } catch {
+      this.cleanupMusicVoice(voice);
+    }
+  }
+
+  private cleanupMusicVoice(voice: MusicVoice): void {
+    this.musicVoices.delete(voice);
+    if (this.activeMusicVoice === voice) {
+      this.activeMusicVoice = null;
+    }
+    voice.source.disconnect();
+    voice.gain.disconnect();
   }
 
   playCue(cue: AudioCue): void {
@@ -131,68 +274,78 @@ export class GameAudio {
     try {
       switch (cue) {
         case "ui":
-          this.playTone(520, 0.06, "triangle", 0, 0.035);
-          this.playTone(780, 0.08, "triangle", 0.04, 0.025);
+          this.playTone(520, 0.055, "triangle", 0, 0.026);
+          this.playTone(780, 0.075, "triangle", 0.038, 0.018);
           break;
         case "scarab":
-          this.playTone(720, 0.05, "sawtooth", 0, 0.025);
-          this.playTone(960, 0.04, "square", 0.035, 0.018);
+          this.playTone(520, 0.035, "sawtooth", 0, 0.022);
+          this.playTone(760, 0.028, "square", 0.035, 0.016);
+          this.playTone(1040, 0.026, "triangle", 0.07, 0.012);
+          this.playNoise(0.065, 2600, 0.012, 0.018);
           break;
         case "nile":
-          this.playNoise(0.36, 720, 0.055);
-          this.playTone(160, 0.24, "sine", 0, 0.04);
+          this.playTone(116, 0.36, "sine", 0, 0.034);
+          this.playNoise(0.42, 420, 0.038, 0.02);
+          this.playNoise(0.24, 1050, 0.024, 0.08);
           break;
         case "wadjet":
-          this.playNoise(0.18, 2800, 0.035);
-          this.playTone(220, 0.18, "sawtooth", 0.03, 0.025);
+          this.playNoise(0.22, 3300, 0.035);
+          this.playToneSlide(260, 145, 0.18, "sawtooth", 0.045, 0.026);
+          this.playTone(840, 0.045, "square", 0.115, 0.012);
           break;
         case "horus":
-          this.playTone(330, 0.16, "triangle", 0, 0.035);
-          this.playTone(660, 0.2, "sine", 0.05, 0.03);
-          this.playTone(990, 0.08, "triangle", 0.13, 0.02);
+          this.playTone(330, 0.18, "triangle", 0, 0.03);
+          this.playTone(660, 0.21, "sine", 0.045, 0.026);
+          this.playTone(990, 0.1, "triangle", 0.13, 0.018);
+          this.playNoise(0.08, 4200, 0.01, 0.04);
           break;
         case "sands":
-          this.playTone(880, 0.08, "triangle", 0, 0.025);
-          this.playTone(660, 0.1, "triangle", 0.07, 0.026);
-          this.playTone(440, 0.18, "sine", 0.16, 0.032);
-          this.playNoise(0.34, 1900, 0.028, 0.06);
+          this.playToneSlide(920, 430, 0.34, "triangle", 0, 0.026);
+          this.playTone(660, 0.12, "sine", 0.09, 0.018);
+          this.playTone(330, 0.22, "sine", 0.22, 0.026);
+          this.playNoise(0.42, 1850, 0.026, 0.045);
           break;
         case "maat":
-          this.playTone(740, 0.09, "triangle", 0, 0.034);
-          this.playTone(1110, 0.08, "sine", 0.09, 0.024);
-          this.playTone(120, 0.28, "sawtooth", 0.78, 0.055);
-          this.playNoise(0.18, 620, 0.04, 0.8);
+          this.playTone(370, 0.14, "triangle", 0, 0.032);
+          this.playTone(555, 0.16, "triangle", 0.075, 0.028);
+          this.playTone(1110, 0.1, "sine", 0.14, 0.018);
+          this.playTone(108, 0.32, "sawtooth", 0.58, 0.048);
+          this.playNoise(0.18, 620, 0.034, 0.62);
           break;
         case "glyph":
-          this.playTone(523.25, 0.1, "sine", 0, 0.026);
-          this.playTone(783.99, 0.1, "triangle", 0.12, 0.024);
-          this.playTone(1046.5, 0.16, "sine", 0.27, 0.022);
-          this.playNoise(0.16, 3200, 0.018, 0.12);
+          this.playTone(392, 0.11, "sine", 0, 0.022);
+          this.playTone(587.33, 0.11, "triangle", 0.095, 0.021);
+          this.playTone(783.99, 0.13, "sine", 0.19, 0.019);
+          this.playTone(1174.66, 0.12, "triangle", 0.29, 0.014);
+          this.playNoise(0.18, 3600, 0.014, 0.1);
           break;
         case "army":
-          this.playTone(174.61, 0.34, "sine", 0, 0.04);
-          this.playTone(349.23, 0.18, "triangle", 0.08, 0.03);
-          this.playTone(698.46, 0.12, "triangle", 0.22, 0.022);
-          this.playNoise(0.42, 2400, 0.026, 0.04);
-          this.playNoise(0.16, 900, 0.04, 0.78);
+          this.playTone(130.81, 0.46, "sine", 0, 0.04);
+          this.playTone(261.63, 0.24, "triangle", 0.08, 0.03);
+          this.playTone(392, 0.22, "triangle", 0.16, 0.024);
+          this.playTone(783.99, 0.14, "sine", 0.31, 0.016);
+          this.playNoise(0.46, 2400, 0.024, 0.035);
+          this.playNoise(0.16, 820, 0.036, 0.62);
           break;
         case "damage":
-          this.playTone(120, 0.12, "sawtooth", 0, 0.055);
-          this.playNoise(0.09, 900, 0.035);
+          this.playToneSlide(190, 95, 0.14, "sawtooth", 0, 0.044);
+          this.playNoise(0.09, 900, 0.028);
           break;
         case "death":
-          this.playTone(240, 0.18, "sawtooth", 0, 0.06);
-          this.playTone(96, 0.5, "sine", 0.08, 0.07);
-          this.playNoise(0.38, 1400, 0.065);
+          this.playToneSlide(240, 84, 0.46, "sawtooth", 0, 0.052);
+          this.playTone(96, 0.58, "sine", 0.08, 0.06);
+          this.playNoise(0.38, 1400, 0.052);
           break;
         case "victory":
-          this.playTone(392, 0.16, "triangle", 0, 0.05);
-          this.playTone(523.25, 0.18, "triangle", 0.12, 0.045);
-          this.playTone(783.99, 0.42, "sine", 0.28, 0.04);
+          this.playTone(392, 0.14, "triangle", 0, 0.04);
+          this.playTone(523.25, 0.16, "triangle", 0.115, 0.038);
+          this.playTone(659.25, 0.18, "triangle", 0.24, 0.034);
+          this.playTone(783.99, 0.42, "sine", 0.38, 0.034);
           break;
         case "phase":
-          this.playTone(196, 0.11, "sine", 0, 0.045);
-          this.playTone(392 + this.musicPhase * 72, 0.22, "triangle", 0.08, 0.04);
+          this.playTone(196, 0.12, "sine", 0, 0.036);
+          this.playTone(392 + this.musicPhase * 72, 0.2, "triangle", 0.08, 0.034);
+          this.playNoise(0.11, 1800 + this.musicPhase * 280, 0.018, 0.04);
           break;
       }
     } finally {
@@ -228,20 +381,34 @@ export class GameAudio {
     oscillator.stop(now + duration + 0.04);
   }
 
-  private playMusicTone(
-    frequency: number,
+  private playToneSlide(
+    startFrequency: number,
+    endFrequency: number,
     duration: number,
     type: OscillatorType,
     delay: number,
     gainValue: number,
   ): void {
-    const wasCueGainActive = this.cueGainActive;
-    this.cueGainActive = false;
-    try {
-      this.playTone(frequency, duration, type, delay, gainValue);
-    } finally {
-      this.cueGainActive = wasCueGainActive;
+    if (!this.context || !this.master) {
+      return;
     }
+
+    const now = this.context.currentTime + delay;
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(startFrequency, now);
+    oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), now + duration);
+    gain.gain.setValueAtTime(0.0001, now);
+    const outputGain = gainValue * (this.cueGainActive ? this.cueGainMultiplier : 1);
+    gain.gain.exponentialRampToValueAtTime(outputGain, now + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    oscillator.connect(gain);
+    gain.connect(this.master);
+    oscillator.start(now);
+    oscillator.stop(now + duration + 0.04);
   }
 
   private playNoise(duration: number, cutoff: number, gainValue: number, delay = 0): void {
@@ -276,15 +443,5 @@ export class GameAudio {
     gain.connect(this.master);
     source.start(now);
     source.stop(now + duration + 0.02);
-  }
-
-  private playMusicNoise(duration: number, cutoff: number, gainValue: number, delay = 0): void {
-    const wasCueGainActive = this.cueGainActive;
-    this.cueGainActive = false;
-    try {
-      this.playNoise(duration, cutoff, gainValue, delay);
-    } finally {
-      this.cueGainActive = wasCueGainActive;
-    }
   }
 }

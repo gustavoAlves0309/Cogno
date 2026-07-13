@@ -1,5 +1,14 @@
 import Phaser from "phaser";
 import { circleIntersectsLine } from "../math/collision";
+import {
+  HORUS_ACTIVE_RAY_STRIDE,
+  HORUS_RAY_COUNT,
+  HORUS_RAY_LENGTH,
+  drawHorusEye,
+  drawHorusRays,
+  type HorusRayVisual,
+} from "../rendering/HorusVisuals";
+import { drawScarabBody, drawScarabTrail, drawScarabWindup } from "../rendering/ScarabVisuals";
 import type { ScarabRewindTrajectory } from "./ScarabVolleyAttack";
 import type { Attack, AttackContext, PlayerState } from "../types";
 
@@ -16,7 +25,7 @@ interface RewindScarab {
   travelMs: number;
 }
 
-interface RewindRay {
+interface RewindRay extends HorusRayVisual {
   start: Phaser.Math.Vector2;
   end: Phaser.Math.Vector2;
   state: "memory" | "telegraph" | "active" | "fade";
@@ -32,11 +41,10 @@ export class SandsOfTimeAttack implements Attack {
   private readonly telegraphMs = 1120;
   private readonly horusDurationMs = 8600;
   private readonly lingerMs = 460;
-  private readonly scarabWindupMs = 420;
+  private readonly scarabWindupMs = 820;
   private readonly scarabs: RewindScarab[] = [];
   private readonly rays: RewindRay[] = [];
   private readonly rayCenter: Phaser.Math.Vector2;
-  private readonly rayCount = 12;
   private age = 0;
   private active = false;
 
@@ -44,7 +52,7 @@ export class SandsOfTimeAttack implements Attack {
     this.context = context;
     this.hasHorusRewind = snapshot.horus === true;
     this.graphics = context.scene.add.graphics().setDepth(58);
-    this.rayCenter = new Phaser.Math.Vector2(context.stageWidth / 2, context.arena.y - 34);
+    this.rayCenter = this.getHourglassCenter();
     if (snapshot.scarabs?.length) {
       this.createScarabEchoes(snapshot.scarabs);
     }
@@ -117,14 +125,14 @@ export class SandsOfTimeAttack implements Attack {
       return;
     }
 
-    const targetWindowMs = this.hasHorusRewind ? this.horusDurationMs * 0.94 : this.horusDurationMs * 0.78;
+    const targetWindowMs = this.hasHorusRewind ? this.horusDurationMs * 0.98 : this.horusDurationMs * 0.84;
     const travelMs = Phaser.Math.Clamp(
       trajectories.reduce((sum, trajectory) => sum + trajectory.travelMs, 0) / trajectories.length,
-      620,
-      980,
+      760,
+      1160,
     );
     const spacing = trajectories.length > 1
-      ? Math.max(360, (targetWindowMs - travelMs) / (trajectories.length - 1))
+      ? Math.max(520, (targetWindowMs - travelMs) / (trajectories.length - 1))
       : 0;
 
     this.scarabs.push(...trajectories.map((trajectory, index) => ({
@@ -151,12 +159,12 @@ export class SandsOfTimeAttack implements Attack {
     const pulse = rayAge % 1100;
     const step = Math.floor(rayAge / 1100);
 
-    for (let index = 0; index < this.rayCount; index += 1) {
-      const angle = baseAngle + (Math.PI * 2 * index) / this.rayCount;
+    for (let index = 0; index < HORUS_RAY_COUNT; index += 1) {
+      const angle = baseAngle + (Math.PI * 2 * index) / HORUS_RAY_COUNT;
       const direction = new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle));
       const start = this.rayCenter.clone().add(direction.clone().scale(20));
-      const end = this.rayCenter.clone().add(direction.scale(620));
-      const selected = (index - step + this.rayCount) % 3 === 0;
+      const end = this.rayCenter.clone().add(direction.scale(HORUS_RAY_LENGTH));
+      const selected = (index - step + HORUS_RAY_COUNT) % HORUS_ACTIVE_RAY_STRIDE === 0;
       let state: RewindRay["state"] = "memory";
 
       if (this.age < this.telegraphMs) {
@@ -175,7 +183,7 @@ export class SandsOfTimeAttack implements Attack {
 
   private draw(): void {
     this.graphics.clear();
-    this.drawHourglass();
+    this.drawRisingSands();
 
     if (this.hasHorusRewind) {
       this.drawHorusRewind();
@@ -184,48 +192,108 @@ export class SandsOfTimeAttack implements Attack {
     if (this.scarabs.length > 0) {
       this.drawScarabRewind();
     }
+
+    this.drawHourglass();
+  }
+
+  private getHourglassCenter(): Phaser.Math.Vector2 {
+    const { bossPosition } = this.context;
+    const y = Math.max(42, bossPosition.y - Phaser.Math.Clamp(this.context.arena.size * 0.32, 84, 104));
+
+    return new Phaser.Math.Vector2(bossPosition.x, y);
+  }
+
+  private drawRisingSands(): void {
+    const { arena } = this.context;
+    const hourglass = this.getHourglassCenter();
+    const charge = Phaser.Math.Clamp(this.age / this.telegraphMs, 0, 1);
+    const activeMs = Math.max(1, this.getActiveMs());
+    const activeProgress = Phaser.Math.Clamp((this.age - this.telegraphMs) / activeMs, 0, 1);
+    const intensity = this.active ? 0.92 : charge * 0.58;
+    const pulse = 0.5 + Math.sin(this.age * 0.018) * 0.5;
+    const bottomY = arena.y + arena.size + 18;
+
+    if (intensity <= 0.02) {
+      return;
+    }
+
+    this.graphics.lineStyle(2, 0xf0d58a, 0.08 * intensity);
+    this.graphics.lineBetween(arena.x + 12, bottomY, hourglass.x - 16, hourglass.y + 24);
+    this.graphics.lineBetween(arena.x + arena.size - 12, bottomY, hourglass.x + 16, hourglass.y + 24);
+
+    this.graphics.fillStyle(0x071018, 0.14 * intensity);
+    this.graphics.fillEllipse(arena.x + arena.size / 2, bottomY - 12, arena.size * 0.86, 34);
+    this.graphics.lineStyle(1.4, 0x8df7ff, 0.16 * intensity);
+    this.graphics.strokeEllipse(arena.x + arena.size / 2, bottomY - 12, arena.size * 0.82, 30);
+
+    const streamCount = this.hasHorusRewind && this.scarabs.length > 0 ? 18 : 12;
+    for (let index = 0; index < streamCount; index += 1) {
+      const column = index / (streamCount - 1);
+      const laneX = Phaser.Math.Linear(arena.x + arena.size * 0.14, arena.x + arena.size * 0.86, column);
+      const phase = (this.age * 0.00058 + index * 0.091 + activeProgress * 0.35) % 1;
+      const rise = Phaser.Math.Easing.Sine.InOut(phase);
+      const x = Phaser.Math.Linear(laneX, hourglass.x + Math.sin(index * 1.7) * 24, rise);
+      const y = Phaser.Math.Linear(bottomY, hourglass.y + 26, rise);
+      const radius = Phaser.Math.Linear(2.8, 1.1, rise) + pulse * 0.35;
+      const alpha = intensity * Phaser.Math.Linear(0.52, 0.86, 1 - rise);
+
+      this.graphics.fillStyle(index % 3 === 0 ? 0x8df7ff : 0xf0d58a, alpha);
+      this.graphics.fillCircle(x + Math.sin(this.age * 0.015 + index) * 5, y, radius);
+
+      if (index % 3 === 0) {
+        this.graphics.lineStyle(1.2, 0xf8f1d1, alpha * 0.18);
+        this.graphics.lineBetween(x, y + 8, x + Math.sin(index) * 4, y - 12);
+      }
+    }
   }
 
   private drawHourglass(): void {
-    const { bossPosition } = this.context;
+    const center = this.getHourglassCenter();
     const pulse = 0.5 + Math.sin(this.age * 0.014) * 0.5;
-    const x = bossPosition.x;
-    const y = Math.max(42, bossPosition.y - 84);
+    const x = center.x;
+    const y = center.y;
     const sandPhase = (this.age * 0.0011) % 1;
     const combo = this.hasHorusRewind && this.scarabs.length > 0;
+    const charge = Phaser.Math.Clamp(this.age / this.telegraphMs, 0, 1);
+    const scale = combo ? 1.08 : 1;
 
-    this.graphics.lineStyle(2, 0xf0d58a, 0.56 + pulse * 0.22);
-    this.graphics.strokeCircle(x, y, 25 + pulse * 2);
+    this.graphics.fillStyle(0x02070c, 0.42 + charge * 0.18);
+    this.graphics.fillCircle(x, y, (34 + pulse * 2) * scale);
+    this.graphics.lineStyle(2, 0xf0d58a, 0.58 + pulse * 0.24);
+    this.graphics.strokeCircle(x, y, (29 + pulse * 2) * scale);
     if (combo) {
       this.graphics.lineStyle(1.4, 0x8df7ff, 0.26 + pulse * 0.22);
-      this.graphics.strokeCircle(x, y, 33 + pulse * 4);
+      this.graphics.strokeCircle(x, y, 39 + pulse * 4);
     }
-    this.graphics.fillStyle(0x071018, 0.74);
-    this.graphics.fillCircle(x, y, 19);
-    this.graphics.lineStyle(3, 0xe8ca7f, 0.86);
-    this.graphics.lineBetween(x - 12, y - 15, x + 12, y - 15);
-    this.graphics.lineBetween(x - 12, y + 15, x + 12, y + 15);
-    this.graphics.lineStyle(2, 0xf0d58a, 0.9);
-    this.graphics.lineBetween(x - 10, y - 12, x + 10, y + 12);
-    this.graphics.lineBetween(x + 10, y - 12, x - 10, y + 12);
-    this.graphics.fillStyle(0x35d6cb, 0.92);
-    this.graphics.fillCircle(x, y, 3.5 + pulse);
-    this.graphics.lineStyle(2, 0x8df7ff, 0.34 + pulse * 0.16);
-    this.graphics.lineBetween(x, y + 10, x, y - 10);
+    this.graphics.lineStyle(3, 0xe8ca7f, 0.9);
+    this.graphics.lineBetween(x - 16, y - 19, x + 16, y - 19);
+    this.graphics.lineBetween(x - 16, y + 19, x + 16, y + 19);
+    this.graphics.lineStyle(2.2, 0xf0d58a, 0.92);
+    this.graphics.lineBetween(x - 13, y - 16, x + 13, y + 16);
+    this.graphics.lineBetween(x + 13, y - 16, x - 13, y + 16);
+    this.graphics.lineStyle(1.4, 0x8df7ff, 0.36 + pulse * 0.2);
+    this.graphics.strokeTriangle(x - 11, y - 14, x + 11, y - 14, x, y - 1);
+    this.graphics.strokeTriangle(x - 11, y + 14, x + 11, y + 14, x, y + 1);
+
+    this.graphics.fillStyle(0xf0d58a, 0.68 + pulse * 0.18);
+    this.graphics.fillTriangle(x - 8, y + 13, x + 8, y + 13, x, y + 3);
+    this.graphics.fillStyle(0x35d6cb, 0.8 + pulse * 0.16);
+    this.graphics.fillTriangle(x - 7, y - 13, x + 7, y - 13, x, y - 3);
+    this.graphics.fillCircle(x, y, 3.8 + pulse);
+    this.graphics.lineStyle(2, 0xf8f1d1, 0.44 + pulse * 0.18);
+    this.graphics.lineBetween(x, y + 14, x, y - 14);
 
     const particleCount = combo ? 12 : 8;
     for (let index = 0; index < particleCount; index += 1) {
       const t = (sandPhase + index / particleCount) % 1;
-      const particleY = Phaser.Math.Linear(y + 12, y - 12, t);
-      const particleX = x + Math.sin(this.age * 0.018 + index) * 3;
-      this.graphics.fillStyle(index % 2 === 0 ? 0xf0d58a : 0x8df7ff, 0.2 + t * 0.52);
-      this.graphics.fillCircle(particleX, particleY, 1.4 + t * 1.2);
+      const particleY = Phaser.Math.Linear(y + 15, y - 15, t);
+      const particleX = x + Math.sin(this.age * 0.018 + index) * 4;
+      this.graphics.fillStyle(index % 2 === 0 ? 0xf0d58a : 0x8df7ff, 0.24 + t * 0.56);
+      this.graphics.fillCircle(particleX, particleY, 1.4 + t * 1.4);
     }
   }
 
   private drawScarabRewind(): void {
-    const shimmer = 0.42 + Math.sin(this.age * 0.022) * 0.18;
-
     for (const scarab of this.scarabs) {
       const localAge = this.age - this.telegraphMs - scarab.delay;
       if (localAge >= -this.scarabWindupMs && localAge < 0) {
@@ -242,92 +310,25 @@ export class SandsOfTimeAttack implements Attack {
         ? Phaser.Math.Clamp((scarab.travelMs + 180 - localAge) / 440, 0, 1)
         : 1;
       const direction = scarab.end.clone().subtract(scarab.start).normalize();
-      this.drawRewindTrail(scarab.position, direction, alpha);
-      this.drawRewindScarab(scarab.position, direction, shimmer, alpha);
+      drawScarabTrail(this.graphics, scarab.position, direction, { alpha, variant: "rewind" });
+      drawScarabBody(this.graphics, scarab.position, direction, {
+        alpha,
+        variant: "rewind",
+        time: this.age - scarab.delay,
+      });
     }
   }
 
   private drawScarabWindup(scarab: RewindScarab, alpha: number): void {
     const direction = scarab.end.clone().subtract(scarab.start);
     const distance = direction.length();
-    direction.normalize();
-    const flash = Math.sin(alpha * Math.PI);
-    const segment = Math.min(distance * 0.36, 132);
 
-    this.graphics.lineStyle(2, 0xf0d58a, 0.18 + flash * 0.28);
-    for (let step = 0; step <= segment; step += 22) {
-      const point = scarab.start.clone().add(direction.clone().scale(step));
-      const dotAlpha = (1 - step / (segment + 1)) * flash;
-      this.graphics.fillStyle(step % 44 === 0 ? 0xf0d58a : 0x35d6cb, dotAlpha * 0.62);
-      this.graphics.fillCircle(point.x, point.y, 2.4 + dotAlpha * 2.2);
-    }
-
-    this.graphics.lineStyle(1.4, 0x8df7ff, flash * 0.24);
-    this.graphics.strokeCircle(scarab.start.x, scarab.start.y, 12 + flash * 8);
-  }
-
-  private drawRewindTrail(position: Phaser.Math.Vector2, direction: Phaser.Math.Vector2, alpha: number): void {
-    for (let index = 0; index < 7; index += 1) {
-      const point = position.clone().subtract(direction.clone().scale(8 + index * 7));
-      this.graphics.fillStyle(index % 2 === 0 ? 0x35d6cb : 0xf0d58a, alpha * (0.5 - index * 0.052));
-      this.graphics.fillCircle(point.x, point.y, 6.4 - index * 0.48);
-    }
-  }
-
-  private drawRewindScarab(
-    position: Phaser.Math.Vector2,
-    direction: Phaser.Math.Vector2,
-    shimmer: number,
-    alpha: number,
-  ): void {
-    const normal = new Phaser.Math.Vector2(-direction.y, direction.x);
-    const head = position.clone().add(direction.clone().scale(8));
-    const tail = position.clone().subtract(direction.clone().scale(8));
-
-    this.graphics.fillStyle(0x153f55, alpha * 0.96);
-    this.graphics.fillTriangle(
-      head.x,
-      head.y,
-      tail.x + normal.x * 9,
-      tail.y + normal.y * 9,
-      tail.x - normal.x * 9,
-      tail.y - normal.y * 9,
-    );
-    this.graphics.lineStyle(3, 0x8df7ff, alpha * (0.58 + shimmer * 0.38));
-    this.graphics.strokeCircle(position.x, position.y, 13);
-    this.graphics.fillStyle(0xf0d58a, alpha);
-    this.graphics.fillCircle(head.x, head.y, 5.8);
-    this.graphics.lineStyle(1.4, 0xf8f1d1, alpha * 0.72);
-    this.graphics.lineBetween(tail.x, tail.y, head.x, head.y);
+    drawScarabWindup(this.graphics, scarab.start, direction, distance, alpha, { variant: "rewind" });
   }
 
   private drawHorusRewind(): void {
     const charge = Phaser.Math.Clamp(this.age / this.telegraphMs, 0, 1);
-
-    for (const ray of this.rays) {
-      if (ray.state === "active") {
-        this.graphics.lineStyle(15, 0x35d6cb, 0.2);
-        this.graphics.lineBetween(ray.start.x, ray.start.y, ray.end.x, ray.end.y);
-        this.graphics.lineStyle(8, 0xf0d58a, 0.76);
-        this.graphics.lineBetween(ray.start.x, ray.start.y, ray.end.x, ray.end.y);
-        this.graphics.lineStyle(3, 0xf8f1d1, 0.92);
-      } else if (ray.state === "telegraph") {
-        this.graphics.lineStyle(4, 0x8df7ff, 0.16 + charge * 0.32);
-      } else if (ray.state === "fade") {
-        this.graphics.lineStyle(3, 0xf0d58a, 0.2);
-      } else {
-        this.graphics.lineStyle(1.5, 0x8df7ff, 0.08);
-      }
-
-      this.graphics.lineBetween(ray.start.x, ray.start.y, ray.end.x, ray.end.y);
-    }
-
-    const pulse = 0.5 + Math.sin(this.age * 0.013) * 0.5;
-    this.graphics.fillStyle(0x071018, 0.82);
-    this.graphics.fillEllipse(this.rayCenter.x, this.rayCenter.y, 54, 28);
-    this.graphics.lineStyle(2, 0xf0d58a, 0.72);
-    this.graphics.strokeEllipse(this.rayCenter.x, this.rayCenter.y, 58, 30);
-    this.graphics.fillStyle(0x35d6cb, 0.8 + pulse * 0.16);
-    this.graphics.fillCircle(this.rayCenter.x, this.rayCenter.y, 7 + pulse * 2);
+    drawHorusRays(this.graphics, this.rays, { age: this.age, charge, variant: "rewind" });
+    drawHorusEye(this.graphics, this.rayCenter, { age: this.age, charge, scale: 0.94, variant: "rewind" });
   }
 }

@@ -70,7 +70,7 @@ O snapshot deve declarar:
 
 - posições `0,25 → 0,75 → 0,50`;
 - aberturas `3,0/2,5/2,2` diâmetros;
-- diagonal fixa a `28°` do eixo vertical;
+- diagonal fixa a `20°` do eixo vertical, evitando interseção com a safezone direita;
 - centro e tangência interna seguros;
 - corners atingidos pelos painéis perigosos;
 - nenhuma zona segura comum entre passagens consecutivas;

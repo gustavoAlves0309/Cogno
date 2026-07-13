@@ -14,7 +14,29 @@ import { ScaleOfMaatAttack } from "../attacks/ScaleOfMaatAttack";
 import { WadjetConeAttack } from "../attacks/WadjetConeAttack";
 import { GameAudio } from "../audio/GameAudio";
 import { PlayerController } from "../PlayerController";
-import { drawCleopatraPortrait } from "../rendering/CleopatraPortrait";
+import {
+  BOSS_DEFINITIONS,
+  isBossSelectable,
+  isLabAvailable,
+  readGameProgression,
+  recordNormalVictory,
+  toggleDevMode,
+  type BossId,
+  type GameProgressionProfile,
+} from "../progression/GameProgression";
+import { drawArenaVisuals, type FightVisualStage } from "../rendering/ArenaVisuals";
+import {
+  drawCleopatraKnowledgeSeal,
+  drawCleopatraPortrait,
+  type CleopatraCastFamily,
+} from "../rendering/CleopatraPortrait";
+import { drawCombatHudVisuals, drawLabButtonVisuals } from "../rendering/CombatHudVisuals";
+import { drawLeonardoMenuIcon } from "../rendering/LeonardoPortrait";
+import {
+  drawMemoryAbsorptionVisuals,
+  getMemoryAbsorptionBossState,
+  MEMORY_ABSORPTION_DURATION_MS,
+} from "../rendering/MemoryAbsorptionVisuals";
 import type { ArenaBounds, AttackContext, GameMode } from "../types";
 
 const FALLBACK_WIDTH = 390;
@@ -25,7 +47,9 @@ const PHASE_TWO_AT_MS = PHASE_DURATION_MS;
 const PHASE_THREE_AT_MS = PHASE_DURATION_MS * 2;
 const ULTIMATE_AT_MS = PHASE_DURATION_MS * 3;
 const FIGHT_DURATION_MS = ULTIMATE_AT_MS + ULTIMATE_DURATION_MS;
-const END_MODAL_DELAY_MS = 1350;
+const DEFEAT_MODAL_DELAY_MS = 1350;
+const PHASE_TRANSITION_MS = 2200;
+const ULTIMATE_FINALE_AUDIO_AT_MS = 30000;
 const CLEOPATRA_VICTORY_LINES = [
   "So the hourglass favors you.",
   "You crossed my reign and kept your soul.",
@@ -74,6 +98,7 @@ interface ScriptEvent {
 }
 
 type FightPhaseId = "phase1" | "phase2" | "phase3" | "ultimate";
+type EndOrigin = "real" | "lab-ultimate";
 
 interface FightPhaseDefinition {
   id: FightPhaseId;
@@ -86,6 +111,7 @@ interface FightPhaseDefinition {
 type PhaseIcon = "cleopatra" | "davinci" | "genghis";
 
 interface MenuBossDefinition {
+  id: BossId;
   icon: PhaseIcon;
   title: string;
   status: string;
@@ -118,29 +144,11 @@ interface MenuMapLayout {
   nodes: MemoryNodeLayout[];
 }
 
-const MENU_BOSSES: MenuBossDefinition[] = [
-  {
-    icon: "cleopatra",
-    title: "Cleopatra",
-    status: "Unlocked",
-    era: "Ancient Egypt",
-    enabled: true,
-  },
-  {
-    icon: "davinci",
-    title: "da Vinci",
-    status: "Sealed",
-    era: "Renaissance",
-    enabled: false,
-  },
-  {
-    icon: "genghis",
-    title: "Genghis Khan",
-    status: "Sealed",
-    era: "Mongol Empire",
-    enabled: false,
-  },
-];
+const MENU_BOSS_PRESENTATION: Record<BossId, Pick<MenuBossDefinition, "icon" | "title" | "era">> = {
+  cleopatra: { icon: "cleopatra", title: "Cleopatra", era: "Ancient Egypt" },
+  leonardo: { icon: "davinci", title: "da Vinci", era: "Renaissance" },
+  genghis: { icon: "genghis", title: "Genghis Khan", era: "Mongol Empire" },
+};
 
 export class CleopatraScene extends Phaser.Scene {
   private mode: GameMode = "title";
@@ -157,6 +165,8 @@ export class CleopatraScene extends Phaser.Scene {
   private titleText!: Phaser.GameObjects.Text;
   private subtitleText!: Phaser.GameObjects.Text;
   private timerText!: Phaser.GameObjects.Text;
+  private phaseTitleText!: Phaser.GameObjects.Text;
+  private phaseSubtitleText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
   private scriptStartedAt = 0;
   private scriptEvents: ScriptEvent[] = [];
@@ -167,10 +177,21 @@ export class CleopatraScene extends Phaser.Scene {
   private logoMarkScale = 0.6;
   private bossPhase = 0;
   private phaseChangedAt = 0;
+  private phaseAnnouncementStartedAt = -PHASE_TRANSITION_MS;
+  private announcedFightPhase: FightPhaseDefinition | null = null;
+  private currentFightPhaseId: FightPhaseId | null = null;
+  private hudRenderedStability = 3;
+  private hudLostSealIndex = -1;
+  private hudStabilityChangedAt = Number.NEGATIVE_INFINITY;
+  private bossCastFamily: CleopatraCastFamily | null = null;
+  private bossCastStartedAt = Number.NEGATIVE_INFINITY;
+  private bossCastDuration = 1;
   private readonly audio = new GameAudio();
   private endingStartedAt = -1;
   private endButtonsShown = false;
   private readonly endingPlayerPosition = new Phaser.Math.Vector2();
+  private readonly endingPlayerArenaAnchor = new Phaser.Math.Vector2(0.5, 0.66);
+  private endOrigin: EndOrigin = "real";
   private endDialogLine = "";
   private hasHorusRewindMemory = false;
   private readonly scarabRewindMemories: ScarabRewindTrajectory[][] = [];
@@ -178,9 +199,19 @@ export class CleopatraScene extends Phaser.Scene {
   private activeScriptDuration = FIGHT_DURATION_MS;
   private menuSelectedIndex = 0;
   private menuPointerDown: { x: number; y: number } | null = null;
+  private progressionProfile: GameProgressionProfile = readGameProgression();
+  private devMode = false;
+  private openMenuOnCreate = false;
 
   constructor() {
     super("CleopatraScene");
+  }
+
+  init(data?: { devMode?: boolean; openMenu?: boolean }): void {
+    const profile = readGameProgression();
+    this.devMode = data?.devMode ?? profile.devMode;
+    this.progressionProfile = { ...profile, devMode: this.devMode };
+    this.openMenuOnCreate = data?.openMenu ?? false;
   }
 
   preload(): void {
@@ -188,10 +219,11 @@ export class CleopatraScene extends Phaser.Scene {
   }
 
   create(): void {
+    const openMenu = this.openMenuOnCreate;
+    this.openMenuOnCreate = false;
+    this.resetTransientStateForCreate(openMenu);
     this.currentTime = this.game.loop.time;
     const size = this.getLogicalSize();
-    this.applyLayout(size.width, size.height, false);
-    this.scale.on("resize", this.handleResize, this);
 
     this.stageGraphics = this.add.graphics().setDepth(0);
     this.arenaGraphics = this.add.graphics().setDepth(10);
@@ -232,6 +264,21 @@ export class CleopatraScene extends Phaser.Scene {
       resolution: this.renderScale,
     }).setOrigin(1, 0.5).setDepth(90);
 
+    this.phaseTitleText = this.add.text(this.stageWidth / 2, this.arena.y - 92, "", {
+      fontFamily: "Georgia, serif",
+      fontSize: "26px",
+      color: "#f8e2a0",
+      letterSpacing: 1,
+      resolution: this.renderScale,
+    }).setOrigin(0.5).setDepth(96).setVisible(false);
+
+    this.phaseSubtitleText = this.add.text(this.stageWidth / 2, this.arena.y - 58, "", {
+      fontFamily: "Trebuchet MS, sans-serif",
+      fontSize: "11px",
+      color: "#9fe6ee",
+      resolution: this.renderScale,
+    }).setOrigin(0.5).setDepth(96).setVisible(false);
+
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       this.audio.unlock();
       if (this.mode === "menu") {
@@ -251,9 +298,19 @@ export class CleopatraScene extends Phaser.Scene {
       }
     });
 
+    this.scale.off("resize", this.handleResize, this);
+    this.scale.on("resize", this.handleResize, this);
+    this.events.off(Phaser.Scenes.Events.SHUTDOWN, this.handleSceneShutdown, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleSceneShutdown, this);
+
+    this.applyLayout(size.width, size.height, false);
     this.drawStage(0);
     this.drawArena();
-    this.showTitle();
+    if (openMenu) {
+      this.showMenu();
+    } else {
+      this.showTitle();
+    }
   }
 
   update(time: number, delta: number): void {
@@ -282,8 +339,11 @@ export class CleopatraScene extends Phaser.Scene {
     }
 
     if ((this.mode === "victory" || this.mode === "defeat") && !this.endButtonsShown) {
-      if (time - this.endingStartedAt >= END_MODAL_DELAY_MS) {
+      if (time - this.endingStartedAt >= this.getEndModalDelay()) {
         this.endButtonsShown = true;
+        if (this.mode === "victory") {
+          this.player.setVisible(false);
+        }
         this.rebuildButtons();
       }
     }
@@ -294,6 +354,73 @@ export class CleopatraScene extends Phaser.Scene {
   private handleResize(): void {
     const size = this.getLogicalSize();
     this.applyLayout(size.width, size.height, true);
+  }
+
+  private handleSceneShutdown(): void {
+    this.scale.off("resize", this.handleResize, this);
+    this.clearButtons();
+    if (this.attacks) {
+      this.attacks.clear();
+    }
+    if (this.player) {
+      this.player.setControlEnabled(false);
+      this.player.destroy();
+    }
+    this.input.removeAllListeners();
+    this.audio.stopMusic();
+    this.clearRewindMemory();
+    this.scriptEvents = [];
+    this.scriptedTestPhase = null;
+    this.menuPointerDown = null;
+    this.announcedFightPhase = null;
+    this.currentFightPhaseId = null;
+    this.bossCastFamily = null;
+    this.resetRuntimeReferences();
+  }
+
+  private resetTransientStateForCreate(openMenu: boolean): void {
+    this.resetRuntimeReferences();
+    this.mode = openMenu ? "menu" : "title";
+    this.scriptStartedAt = 0;
+    this.scriptEvents = [];
+    this.currentTime = 0;
+    this.finalProgress = 0;
+    this.bossPhase = 0;
+    this.phaseChangedAt = 0;
+    this.phaseAnnouncementStartedAt = -PHASE_TRANSITION_MS;
+    this.announcedFightPhase = null;
+    this.currentFightPhaseId = null;
+    this.hudRenderedStability = 3;
+    this.hudLostSealIndex = -1;
+    this.hudStabilityChangedAt = Number.NEGATIVE_INFINITY;
+    this.bossCastFamily = null;
+    this.bossCastStartedAt = Number.NEGATIVE_INFINITY;
+    this.bossCastDuration = 1;
+    this.endingStartedAt = -1;
+    this.endButtonsShown = false;
+    this.endingPlayerPosition.set(0, 0);
+    this.endingPlayerArenaAnchor.set(0.5, 0.66);
+    this.endOrigin = "real";
+    this.endDialogLine = "";
+    this.clearRewindMemory();
+    this.scriptedTestPhase = null;
+    this.activeScriptDuration = FIGHT_DURATION_MS;
+    this.menuPointerDown = null;
+  }
+
+  private resetRuntimeReferences(): void {
+    this.player = undefined!;
+    this.attacks = undefined!;
+    this.stageGraphics = undefined!;
+    this.arenaGraphics = undefined!;
+    this.uiGraphics = undefined!;
+    this.logoImage = undefined!;
+    this.titleText = undefined!;
+    this.subtitleText = undefined!;
+    this.timerText = undefined!;
+    this.phaseTitleText = undefined!;
+    this.phaseSubtitleText = undefined!;
+    this.promptText = undefined!;
   }
 
   private getLogicalSize(): { width: number; height: number } {
@@ -413,7 +540,8 @@ export class CleopatraScene extends Phaser.Scene {
       this.subtitleText.setVisible(false);
       this.subtitleText.setPosition(this.stageWidth / 2, logoBottomY + 38);
       this.promptText.setPosition(this.stageWidth / 2, this.stageHeight - Phaser.Math.Clamp(this.stageHeight * 0.18, 86, 130));
-      this.timerText.setPosition(this.stageWidth - 16, this.mode === "menu" || this.mode === "title" ? logoBottomY + 56 : 42);
+      const timerX = this.mode === "real" ? this.stageWidth - 84 : this.stageWidth - 16;
+      this.timerText.setPosition(timerX, this.mode === "menu" || this.mode === "title" ? logoBottomY + 56 : 42);
     }
 
     if (preservePlayer && this.player) {
@@ -425,25 +553,48 @@ export class CleopatraScene extends Phaser.Scene {
       );
     }
 
+    if (this.player && this.endingStartedAt >= 0 && (this.mode === "victory" || this.mode === "defeat")) {
+      this.endingPlayerPosition.set(
+        Phaser.Math.Clamp(
+          this.arena.x + Phaser.Math.Clamp(this.endingPlayerArenaAnchor.x, 0, 1) * this.arena.size,
+          this.arena.x + this.player.state.radius,
+          this.arena.x + this.arena.size - this.player.state.radius,
+        ),
+        Phaser.Math.Clamp(
+          this.arena.y + Phaser.Math.Clamp(this.endingPlayerArenaAnchor.y, 0, 1) * this.arena.size,
+          this.arena.y + this.player.state.radius,
+          this.arena.y + this.arena.size - this.player.state.radius,
+        ),
+      );
+      this.player.state.position.copy(this.endingPlayerPosition);
+    }
+
     if (this.arenaGraphics) {
       this.drawArena();
     }
 
     if (this.player) {
-      const joystickRadius = Phaser.Math.Clamp(this.stageWidth * 0.095, 34, 42);
-      const zoneGap = this.mode === "real" ? 58 : this.mode === "test" ? 166 : 26;
-      const minZoneHeight = joystickRadius * 2.55;
-      const zoneY = Math.min(this.arena.y + this.arena.size + zoneGap, this.stageHeight - minZoneHeight);
-      const zoneHeight = this.stageHeight - zoneY - 8;
-      const joystickY = zoneY + zoneHeight / 2;
-      this.player.setJoystickLayout(this.stageWidth / 2, joystickY, joystickRadius);
-      this.player.setControlZone(0, zoneY, this.stageWidth, zoneHeight);
+      this.updatePlayerControlLayout();
     }
 
     if (this.uiGraphics) {
       this.updateTextResolution();
       this.rebuildButtons();
     }
+  }
+
+  private updatePlayerControlLayout(): void {
+    const joystickRadius = Phaser.Math.Clamp(this.stageWidth * 0.095, 34, 42);
+    const phaseLabSelecting = this.mode === "test" && this.scriptedTestPhase === null;
+    const combatControls = this.mode === "real" || (this.mode === "test" && this.scriptedTestPhase !== null);
+    const zoneGap = combatControls ? 52 : phaseLabSelecting ? 126 : 26;
+    const minZoneHeight = joystickRadius * (combatControls ? 3.6 : 2.7);
+    const zoneY = Math.min(this.arena.y + this.arena.size + zoneGap, this.stageHeight - minZoneHeight);
+    const zoneHeight = this.stageHeight - zoneY - 8;
+    const joystickY = zoneY + zoneHeight / 2;
+
+    this.player.setJoystickLayout(this.stageWidth / 2, joystickY, joystickRadius);
+    this.player.setControlZone(0, zoneY, this.stageWidth, zoneHeight);
   }
 
   private showTitle(): void {
@@ -470,8 +621,10 @@ export class CleopatraScene extends Phaser.Scene {
   }
 
   private showMenu(): void {
+    this.progressionProfile = readGameProgression();
+    this.devMode = this.progressionProfile.devMode;
     this.mode = "menu";
-    this.menuSelectedIndex = Phaser.Math.Clamp(this.menuSelectedIndex, 0, MENU_BOSSES.length - 1);
+    this.menuSelectedIndex = Phaser.Math.Clamp(this.menuSelectedIndex, 0, this.getMenuBosses().length - 1);
     this.menuPointerDown = null;
     this.clearButtons();
     this.attacks.clear();
@@ -495,6 +648,34 @@ export class CleopatraScene extends Phaser.Scene {
     this.rebuildButtons();
   }
 
+  private getMenuBosses(): MenuBossDefinition[] {
+    return BOSS_DEFINITIONS.map((boss) => {
+      const presentation = MENU_BOSS_PRESENTATION[boss.id];
+      const enabled = isBossSelectable(boss.id, this.progressionProfile);
+      return {
+        id: boss.id,
+        ...presentation,
+        status: enabled ? "Unlocked" : "Sealed",
+        enabled,
+      };
+    });
+  }
+
+  private toggleDevelopmentMode(): void {
+    this.progressionProfile = toggleDevMode();
+    this.devMode = this.progressionProfile.devMode;
+    const activeBoss = this.getMenuBosses()[this.menuSelectedIndex];
+    if (!activeBoss?.enabled) {
+      this.menuSelectedIndex = 0;
+    }
+    this.audio.playCue("ui");
+    this.rebuildButtons();
+  }
+
+  private canUseLab(): boolean {
+    return isLabAvailable("cleopatra", this.progressionProfile);
+  }
+
   private handleMenuPointerUp(pointer: Phaser.Input.Pointer): void {
     if (!this.menuPointerDown) {
       return;
@@ -512,7 +693,7 @@ export class CleopatraScene extends Phaser.Scene {
   }
 
   private setMenuSelection(index: number): void {
-    const nextIndex = Phaser.Math.Clamp(index, 0, MENU_BOSSES.length - 1);
+    const nextIndex = Phaser.Math.Clamp(index, 0, this.getMenuBosses().length - 1);
     if (nextIndex === this.menuSelectedIndex) {
       return;
     }
@@ -522,8 +703,25 @@ export class CleopatraScene extends Phaser.Scene {
     this.rebuildButtons();
   }
 
+  private startSelectedBoss(icon: PhaseIcon): void {
+    const selectedBoss = this.getMenuBosses().find((boss) => boss.icon === icon);
+    if (!selectedBoss?.enabled) {
+      return;
+    }
+
+    if (selectedBoss.id === "cleopatra") {
+      this.startRealMode();
+      return;
+    }
+
+    if (selectedBoss.id === "leonardo") {
+      this.scene.start("LeonardoScene", { devMode: this.devMode });
+    }
+  }
+
   private startRealMode(): void {
     this.mode = "real";
+    this.endOrigin = "real";
     this.clearButtons();
     this.attacks.clear();
     this.clearRewindMemory();
@@ -533,26 +731,31 @@ export class CleopatraScene extends Phaser.Scene {
     this.titleText.setVisible(false);
     this.subtitleText.setVisible(false);
     this.promptText.setVisible(false);
-    this.timerText.setVisible(false);
+    this.timerText.setVisible(true);
     const size = this.getLogicalSize();
     this.applyLayout(size.width, size.height, false);
     this.player.reset();
+    this.resetCombatHudState();
     this.player.setControlEnabled(true);
     this.scriptStartedAt = this.getNow();
-    this.setBossPhase(0, false);
+    this.announceFightPhase(FIGHT_PHASES[0], false);
     this.scriptEvents = this.createScript();
     this.scriptedTestPhase = null;
     this.activeScriptDuration = FIGHT_DURATION_MS;
     this.finalProgress = 0;
     this.timerText.setText("");
-    this.audio.setPhase(0);
+    this.audio.setPhase(0, true);
     this.audio.startMusic();
     this.audio.playCue("ui");
     this.rebuildButtons();
   }
 
   private startTestMode(): void {
+    if (!this.canUseLab()) {
+      return;
+    }
     this.mode = "test";
+    this.endOrigin = "real";
     this.clearButtons();
     this.attacks.clear();
     this.audio.stopMusic();
@@ -575,14 +778,22 @@ export class CleopatraScene extends Phaser.Scene {
     this.rebuildButtons();
   }
 
-  private finish(mode: "victory" | "defeat"): void {
+  private finish(mode: "victory" | "defeat", origin: EndOrigin = "real"): void {
+    if (mode === "victory" && origin === "real" && !this.devMode) {
+      this.progressionProfile = recordNormalVictory("cleopatra");
+    }
     this.endingPlayerPosition.copy(this.player.state.position);
+    this.endingPlayerArenaAnchor.set(
+      (this.endingPlayerPosition.x - this.arena.x) / this.arena.size,
+      (this.endingPlayerPosition.y - this.arena.y) / this.arena.size,
+    );
     this.mode = mode;
+    this.endOrigin = mode === "victory" ? origin : "real";
     this.clearButtons();
     this.attacks.clear();
     this.clearRewindMemory();
     this.player.setControlEnabled(false);
-    this.player.setVisible(false);
+    this.player.setVisible(mode === "victory");
     this.titleText.setVisible(false);
     this.subtitleText.setVisible(false);
     this.promptText.setVisible(false);
@@ -596,6 +807,10 @@ export class CleopatraScene extends Phaser.Scene {
     this.audio.playCue(mode === "victory" ? "victory" : "death");
     this.endDialogLine = this.pickEndDialog(mode);
     this.cameras.main.shake(mode === "victory" ? 150 : 230, mode === "victory" ? 0.002 : 0.005);
+  }
+
+  private getEndModalDelay(): number {
+    return this.mode === "victory" ? MEMORY_ABSORPTION_DURATION_MS : DEFEAT_MODAL_DELAY_MS;
   }
 
   private pickEndDialog(mode: "victory" | "defeat"): string {
@@ -620,84 +835,86 @@ export class CleopatraScene extends Phaser.Scene {
 
   private createPhaseEvents(phase: FightPhaseId, offset: number): Array<[number, () => void]> {
     const at = (time: number, run: () => void): [number, () => void] => [offset + time, run];
+    const attackAt = (time: number, run: () => void): [number, () => void] => at(time + PHASE_TRANSITION_MS, run);
 
     if (phase === "phase1") {
       return [
         at(0, () => this.clearRewindMemory()),
-        at(900, () => this.spawnScarabVolley()),
-        at(8200, () => this.spawnNile(this.arena.y + this.arena.size * 0.72)),
-        at(16000, () => this.spawnWadjet("left")),
-        at(24200, () => this.spawnHorus()),
-        at(35200, () => this.spawnScaleOfMaat()),
-        at(41200, () => this.spawnExpandingHieroglyph()),
-        at(48600, () => this.spawnScarabVolley()),
-        at(55800, () => this.spawnNile(this.arena.y + this.arena.size * 0.48)),
-        at(63000, () => this.spawnWadjet("right")),
-        at(70400, () => this.spawnHorus()),
-        at(80000, () => this.spawnScaleOfMaat()),
-        at(84600, () => this.spawnExpandingHieroglyph()),
+        attackAt(900, () => this.spawnScarabVolley()),
+        attackAt(8200, () => this.spawnNile(this.arena.y + this.arena.size * 0.72)),
+        attackAt(16000, () => this.spawnWadjet("left")),
+        attackAt(24200, () => this.spawnHorus()),
+        attackAt(35200, () => this.spawnScaleOfMaat()),
+        attackAt(41200, () => this.spawnExpandingHieroglyph()),
+        attackAt(48600, () => this.spawnExpandingHieroglyph()),
+        attackAt(55800, () => this.spawnWadjet("right")),
+        attackAt(63000, () => this.spawnScarabVolley()),
+        attackAt(70400, () => this.spawnNile(this.arena.y + this.arena.size * 0.48)),
+        attackAt(76200, () => this.spawnHorus()),
+        attackAt(84600, () => this.spawnScaleOfMaat()),
       ];
     }
 
     if (phase === "phase2") {
       return [
         at(0, () => this.clearRewindMemory()),
-        at(900, () => this.spawnHorus()),
-        at(9800, () => this.spawnSandsOfTime()),
-        at(15600, () => this.spawnScarabVolley()),
-        at(21800, () => this.spawnSandsOfTime()),
-        at(27600, () => this.spawnWadjet("right")),
-        at(34800, () => this.spawnScaleOfMaat()),
-        at(42000, () => this.spawnScarabVolley()),
-        at(47400, () => this.spawnScarabVolley()),
-        at(53600, () => this.spawnSandsOfTime()),
-        at(59400, () => this.spawnNile(this.arena.y + this.arena.size * 0.58)),
-        at(65600, () => this.spawnExpandingHieroglyph()),
-        at(71600, () => this.spawnHorus()),
-        at(80600, () => this.spawnSandsOfTime()),
-        at(85200, () => this.spawnWadjet("left")),
+        attackAt(900, () => this.spawnHorus()),
+        attackAt(9800, () => this.spawnSandsOfTime()),
+        attackAt(15600, () => this.spawnScarabVolley()),
+        attackAt(21800, () => this.spawnSandsOfTime()),
+        attackAt(27600, () => this.spawnWadjet("right")),
+        attackAt(34800, () => this.spawnScaleOfMaat()),
+        attackAt(42000, () => this.spawnScarabVolley()),
+        attackAt(47400, () => this.spawnScarabVolley()),
+        attackAt(53600, () => this.spawnSandsOfTime()),
+        attackAt(59400, () => this.spawnNile(this.arena.y + this.arena.size * 0.58)),
+        attackAt(65600, () => this.spawnExpandingHieroglyph()),
+        attackAt(71000, () => this.spawnHorus()),
+        attackAt(78800, () => this.spawnWadjet("left")),
+        attackAt(80600, () => this.spawnSandsOfTime()),
       ];
     }
 
     if (phase === "phase3") {
       return [
         at(0, () => this.clearRewindMemory()),
-        at(500, () => this.spawnScarabVolley()),
-        at(2100, () => this.spawnHorus()),
-        at(10600, () => this.spawnSandsOfTime()),
-        at(15400, () => this.spawnScaleOfMaat()),
-        at(17900, () => this.spawnExpandingHieroglyph()),
-        at(22200, () => this.spawnScarabVolley()),
-        at(27000, () => this.spawnNile(this.arena.y + this.arena.size * 0.54)),
-        at(31000, () => this.spawnHorus()),
-        at(40400, () => this.spawnSandsOfTime()),
-        at(44800, () => this.spawnScaleOfMaat()),
-        at(47600, () => this.spawnExpandingHieroglyph()),
-        at(51400, () => this.spawnScarabVolley()),
-        at(56200, () => this.spawnHorus()),
-        at(64600, () => this.spawnSandsOfTime()),
-        at(69000, () => this.spawnScaleOfMaat()),
-        at(72400, () => this.spawnExpandingHieroglyph()),
-        at(75800, () => this.spawnNile(this.arena.y + this.arena.size * 0.46)),
-        at(79400, () => this.spawnScarabVolley()),
-        at(83600, () => this.spawnExpandingHieroglyph()),
-        at(86200, () => this.spawnScaleOfMaat()),
+        attackAt(500, () => this.spawnScarabVolley()),
+        attackAt(2100, () => this.spawnHorus()),
+        attackAt(10600, () => this.spawnSandsOfTime()),
+        attackAt(20000, () => this.spawnScaleOfMaat()),
+        attackAt(22200, () => this.spawnExpandingHieroglyph()),
+        attackAt(22200, () => this.spawnScarabVolley()),
+        attackAt(27000, () => this.spawnNile(this.arena.y + this.arena.size * 0.54)),
+        attackAt(31000, () => this.spawnHorus()),
+        attackAt(40400, () => this.spawnSandsOfTime()),
+        attackAt(49800, () => this.spawnScaleOfMaat()),
+        attackAt(51400, () => this.spawnScarabVolley()),
+        attackAt(52000, () => this.spawnExpandingHieroglyph()),
+        attackAt(56200, () => this.spawnHorus()),
+        attackAt(64600, () => this.spawnSandsOfTime()),
+        attackAt(74000, () => this.spawnScaleOfMaat()),
+        attackAt(75800, () => this.spawnNile(this.arena.y + this.arena.size * 0.46)),
+        attackAt(76200, () => this.spawnExpandingHieroglyph()),
+        attackAt(79400, () => this.spawnScarabVolley()),
+        attackAt(83600, () => this.spawnExpandingHieroglyph()),
+        attackAt(86200, () => this.spawnScaleOfMaat()),
       ];
     }
 
     return [
-      at(0, () => this.spawnArmyOfIllusions()),
+      attackAt(0, () => this.spawnArmyOfIllusions()),
     ];
   }
 
   private updateScript(time: number): void {
     const elapsed = time - this.scriptStartedAt;
     if (this.mode === "real") {
-      this.setBossPhase(this.getBossPhaseForElapsed(elapsed));
+      this.updateRealFightPhase(elapsed);
+      this.updateUltimateFinaleMusic(elapsed);
+      this.timerText.setText(this.formatDuration(this.getStageElapsed(elapsed)));
     } else if (this.mode === "test" && this.scriptedTestPhase) {
-      this.timerText.setText(
-        `${this.scriptedTestPhase.title}: ${this.formatDuration(elapsed)} / ${this.formatDuration(this.activeScriptDuration)}`,
-      );
+      this.updateUltimateFinaleMusic(elapsed);
+      this.timerText.setText(this.formatDuration(this.getStageElapsed(elapsed)));
     }
 
     for (const event of this.scriptEvents) {
@@ -708,6 +925,11 @@ export class CleopatraScene extends Phaser.Scene {
     }
 
     if (this.mode === "test" && this.scriptedTestPhase && elapsed >= this.activeScriptDuration) {
+      if (this.scriptedTestPhase.id === "ultimate") {
+        this.finish("victory", "lab-ultimate");
+        return;
+      }
+
       this.completeTestPhase();
       return;
     }
@@ -717,16 +939,27 @@ export class CleopatraScene extends Phaser.Scene {
     }
   }
 
-  private getBossPhaseForElapsed(elapsed: number): number {
+  private getFightPhaseForElapsed(elapsed: number): FightPhaseDefinition {
+    if (elapsed >= ULTIMATE_AT_MS) {
+      return FIGHT_PHASES[3];
+    }
+
     if (elapsed >= PHASE_THREE_AT_MS) {
-      return 2;
+      return FIGHT_PHASES[2];
     }
 
     if (elapsed >= PHASE_TWO_AT_MS) {
-      return 1;
+      return FIGHT_PHASES[1];
     }
 
-    return 0;
+    return FIGHT_PHASES[0];
+  }
+
+  private updateRealFightPhase(elapsed: number): void {
+    const phase = this.getFightPhaseForElapsed(elapsed);
+    if (this.currentFightPhaseId !== phase.id) {
+      this.announceFightPhase(phase, true);
+    }
   }
 
   private formatDuration(ms: number): string {
@@ -734,6 +967,32 @@ export class CleopatraScene extends Phaser.Scene {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  }
+
+  private getStageElapsed(elapsed: number): number {
+    if (this.mode === "test") {
+      return this.scriptedTestPhase?.id === "ultimate" && elapsed >= ULTIMATE_FINALE_AUDIO_AT_MS
+        ? elapsed - ULTIMATE_FINALE_AUDIO_AT_MS
+        : elapsed;
+    }
+
+    if (elapsed >= ULTIMATE_AT_MS + ULTIMATE_FINALE_AUDIO_AT_MS) {
+      return elapsed - ULTIMATE_AT_MS - ULTIMATE_FINALE_AUDIO_AT_MS;
+    }
+
+    if (elapsed >= ULTIMATE_AT_MS) {
+      return elapsed - ULTIMATE_AT_MS;
+    }
+
+    if (elapsed >= PHASE_THREE_AT_MS) {
+      return elapsed - PHASE_THREE_AT_MS;
+    }
+
+    if (elapsed >= PHASE_TWO_AT_MS) {
+      return elapsed - PHASE_TWO_AT_MS;
+    }
+
+    return elapsed;
   }
 
   private setBossPhase(phase: number, feedback = true): void {
@@ -754,24 +1013,58 @@ export class CleopatraScene extends Phaser.Scene {
     }
   }
 
+  private announceFightPhase(phase: FightPhaseDefinition, feedback: boolean): void {
+    this.currentFightPhaseId = phase.id;
+    this.announcedFightPhase = phase;
+    this.phaseAnnouncementStartedAt = this.getNow();
+    this.bossCastFamily = null;
+    this.bossCastStartedAt = Number.NEGATIVE_INFINITY;
+    this.setBossPhase(phase.bossPhase, false);
+
+    if (!feedback) {
+      return;
+    }
+
+    const flash = phase.bossPhase === 1
+      ? { r: 60, g: 218, b: 210 }
+      : phase.id === "ultimate"
+        ? { r: 255, g: 211, b: 111 }
+        : { r: 232, g: 104, b: 104 };
+
+    this.cameras.main.flash(360, flash.r, flash.g, flash.b, false);
+    this.cameras.main.shake(300, phase.id === "ultimate" ? 0.004 : 0.0027);
+    this.audio.setPhase(this.getAudioPhaseForFightPhase(phase, 0));
+    this.audio.playCue(phase.id === "ultimate" ? "army" : "phase");
+  }
+
   private startTestPhase(phase: FightPhaseDefinition): void {
+    if (!this.canUseLab()) {
+      return;
+    }
     this.clearButtons();
     this.attacks.clear();
     this.clearRewindMemory();
     this.player.reset();
     this.player.setVisible(true);
     this.player.setControlEnabled(true);
+    this.endOrigin = "real";
     this.scriptedTestPhase = phase;
+    this.updatePlayerControlLayout();
     this.activeScriptDuration = phase.duration;
     this.scriptStartedAt = this.getNow();
     this.scriptEvents = this.createPhaseScript(phase);
     this.finalProgress = 0;
-    this.setBossPhase(phase.bossPhase, false);
-    this.audio.setPhase(phase.bossPhase);
+    this.announceFightPhase(phase, false);
+    this.audio.setPhase(this.getAudioPhaseForFightPhase(phase, 0), true);
     this.audio.startMusic();
     this.audio.playCue("phase");
     this.timerText.setText(`${phase.title}: ${phase.subtitle}`);
     this.rebuildButtons();
+  }
+
+  private restartUltimateLab(): void {
+    this.startTestMode();
+    this.startTestPhase(FIGHT_PHASES[3]);
   }
 
   private completeTestPhase(): void {
@@ -783,6 +1076,30 @@ export class CleopatraScene extends Phaser.Scene {
     this.clearRewindMemory();
     this.audio.stopMusic();
     this.timerText.setText(phase ? `${phase.title} complete` : "Phase complete");
+    this.updatePlayerControlLayout();
+    this.rebuildButtons();
+  }
+
+  private getAudioPhaseForFightPhase(phase: FightPhaseDefinition, phaseElapsed: number): number {
+    if (phase.id !== "ultimate") {
+      return phase.bossPhase;
+    }
+
+    return phaseElapsed >= ULTIMATE_FINALE_AUDIO_AT_MS ? 4 : 3;
+  }
+
+  private updateUltimateFinaleMusic(elapsed: number): void {
+    if (this.mode === "real") {
+      const phase = this.getFightPhaseForElapsed(elapsed);
+      if (phase.id === "ultimate") {
+        this.audio.setPhase(this.getAudioPhaseForFightPhase(phase, elapsed - ULTIMATE_AT_MS));
+      }
+      return;
+    }
+
+    if (this.mode === "test" && this.scriptedTestPhase?.id === "ultimate") {
+      this.audio.setPhase(this.getAudioPhaseForFightPhase(this.scriptedTestPhase, elapsed));
+    }
   }
 
   private shouldPrepareSingleTestAttack(): boolean {
@@ -798,6 +1115,7 @@ export class CleopatraScene extends Phaser.Scene {
     if (this.scarabRewindMemories.length > 2) {
       this.scarabRewindMemories.shift();
     }
+    this.triggerBossCast("summon");
     this.audio.playCue("scarab");
     this.attacks.add(new ScarabVolleyAttack(this.getAttackContext(), this.getNow(), (trajectory) => {
       volleyMemory.push({
@@ -813,6 +1131,7 @@ export class CleopatraScene extends Phaser.Scene {
     if (this.shouldPrepareSingleTestAttack()) {
       this.prepareTestAttack("Test: Nile");
     }
+    this.triggerBossCast("summon");
     this.audio.playCue("nile");
     this.attacks.add(new NileRiseAttack(this.getAttackContext(), this.getNow(), targetY));
   }
@@ -821,6 +1140,7 @@ export class CleopatraScene extends Phaser.Scene {
     if (this.shouldPrepareSingleTestAttack()) {
       this.prepareTestAttack("Test: Wadjet");
     }
+    this.triggerBossCast("solar");
     this.audio.playCue("wadjet");
     this.attacks.add(new WadjetConeAttack(this.getAttackContext(), this.getNow(), side));
   }
@@ -833,6 +1153,7 @@ export class CleopatraScene extends Phaser.Scene {
       this.prepareTestAttack(label);
     }
     this.hasHorusRewindMemory = true;
+    this.triggerBossCast("solar");
     this.audio.playCue("horus");
     this.attacks.add(new HorusSunAttack(this.getAttackContext(), this.getNow()));
   }
@@ -875,9 +1196,37 @@ export class CleopatraScene extends Phaser.Scene {
           : "Test: Sands rewinds scarabs";
       this.prepareTestAttack(label);
     }
+    this.triggerBossCast("temporal");
     this.audio.playCue("sands");
     this.attacks.add(new SandsOfTimeAttack(this.getAttackContext(), this.getNow(), snapshot));
     this.clearRewindMemory();
+  }
+
+  private spawnLabSandsOfTime(): void {
+    if (this.shouldPrepareSingleTestAttack() && !this.hasHorusRewindMemory && this.getCompleteScarabRewindMemories().length === 0) {
+      this.hasHorusRewindMemory = true;
+      this.scarabRewindMemories.push(this.createLabScarabRewindMemory());
+    }
+
+    this.spawnSandsOfTime();
+  }
+
+  private createLabScarabRewindMemory(): ScarabRewindTrajectory[] {
+    const { arena, bossPosition } = this;
+    const targets = [
+      new Phaser.Math.Vector2(arena.x + arena.size * 0.2, arena.y + arena.size * 0.28),
+      new Phaser.Math.Vector2(arena.x + arena.size * 0.8, arena.y + arena.size * 0.32),
+      new Phaser.Math.Vector2(arena.x + arena.size * 0.5, arena.y + arena.size * 0.52),
+      new Phaser.Math.Vector2(arena.x + arena.size * 0.24, arena.y + arena.size * 0.76),
+      new Phaser.Math.Vector2(arena.x + arena.size * 0.76, arena.y + arena.size * 0.78),
+    ];
+
+    return targets.slice(0, SCARAB_REWIND_TRAJECTORY_COUNT).map((target, index) => ({
+      start: bossPosition.clone(),
+      end: target,
+      delay: index * 240,
+      travelMs: 880,
+    }));
   }
 
   private clearRewindMemory(): void {
@@ -893,6 +1242,7 @@ export class CleopatraScene extends Phaser.Scene {
     if (this.shouldPrepareSingleTestAttack()) {
       this.prepareTestAttack("Test: Scale of Ma'at");
     }
+    this.triggerBossCast("temporal");
     this.audio.playCue("maat");
     this.attacks.add(new ScaleOfMaatAttack(this.getAttackContext(), this.getNow()));
   }
@@ -901,6 +1251,7 @@ export class CleopatraScene extends Phaser.Scene {
     if (this.shouldPrepareSingleTestAttack()) {
       this.prepareTestAttack("Test: expanding glyph");
     }
+    this.triggerBossCast("summon");
     this.audio.playCue("glyph");
     this.attacks.add(new ExpandingHieroglyphAttack(this.getAttackContext(), this.getNow()));
   }
@@ -909,8 +1260,15 @@ export class CleopatraScene extends Phaser.Scene {
     if (this.shouldPrepareSingleTestAttack()) {
       this.prepareTestAttack("Test: Army of Illusions");
     }
+    this.triggerBossCast("summon");
     this.audio.playCue("army");
     this.attacks.add(new ArmyOfIllusionsAttack(this.getAttackContext(), this.getNow()));
+  }
+
+  private triggerBossCast(family: CleopatraCastFamily): void {
+    this.bossCastFamily = family;
+    this.bossCastStartedAt = this.getNow();
+    this.bossCastDuration = family === "summon" ? 760 : family === "solar" ? 640 : 860;
   }
 
   private prepareTestAttack(label: string): void {
@@ -935,27 +1293,95 @@ export class CleopatraScene extends Phaser.Scene {
     return this.game.loop.time;
   }
 
+  private getPhaseTransitionIntensity(time: number): number {
+    const isCombatPhase = this.mode === "real" || (this.mode === "test" && this.scriptedTestPhase !== null);
+    if (!isCombatPhase) {
+      return 0;
+    }
+
+    const age = time - this.phaseAnnouncementStartedAt;
+    if (age < 0 || age > PHASE_TRANSITION_MS) {
+      return 0;
+    }
+
+    return Math.sin((age / PHASE_TRANSITION_MS) * Math.PI);
+  }
+
+  private getFightVisualStage(time: number): FightVisualStage {
+    if (this.mode === "test" && this.scriptedTestPhase === null) {
+      return 0;
+    }
+
+    if (this.currentFightPhaseId === "phase2") {
+      return 1;
+    }
+
+    if (this.currentFightPhaseId === "phase3") {
+      return 2;
+    }
+
+    if (this.currentFightPhaseId === "ultimate") {
+      const elapsed = this.mode === "real" || this.mode === "victory" || this.mode === "defeat"
+        ? time - this.scriptStartedAt - ULTIMATE_AT_MS
+        : time - this.scriptStartedAt;
+      return elapsed >= ULTIMATE_FINALE_AUDIO_AT_MS ? 4 : 3;
+    }
+
+    return 0;
+  }
+
+  private getBossVisualScale(): number {
+    const gameplayBossMax = this.stageHeight < 700 ? 0.6 : 0.68;
+    const availableBossScale = this.mode === "menu"
+      ? Phaser.Math.Clamp(this.stageHeight / 980, 0.5, 0.78)
+      : Phaser.Math.Clamp((this.arena.y + 36) / 250, 0.34, gameplayBossMax);
+    return Phaser.Math.Clamp(
+      Math.min(this.arena.size / 350, availableBossScale),
+      this.mode === "menu" ? 0.5 : 0.34,
+      this.mode === "menu" ? 0.78 : gameplayBossMax,
+    );
+  }
+
   private drawStage(time: number): void {
     const width = this.stageWidth;
     const height = this.stageHeight;
     const bossX = this.bossPosition.x;
     const bossY = this.bossPosition.y;
-    const gameplayBossMax = this.stageHeight < 700 ? 0.6 : 0.68;
-    const availableBossScale = this.mode === "menu"
-      ? Phaser.Math.Clamp(this.stageHeight / 980, 0.5, 0.78)
-      : Phaser.Math.Clamp((this.arena.y + 36) / 250, 0.34, gameplayBossMax);
-    const bossScale = Phaser.Math.Clamp(
-      Math.min(this.arena.size / 350, availableBossScale),
-      this.mode === "menu" ? 0.5 : 0.34,
-      this.mode === "menu" ? 0.78 : gameplayBossMax,
-    );
+    const bossScale = this.getBossVisualScale();
+    const absorptionState = this.mode === "victory"
+      ? getMemoryAbsorptionBossState(Math.max(0, time - this.endingStartedAt))
+      : null;
+    const auraScale = bossScale * (absorptionState?.auraScale ?? 1);
+    const auraAlpha = absorptionState?.auraAlpha ?? 1;
     const pulse = 0.5 + Math.sin(time * 0.0016) * 0.5;
     const isCombatPhase = this.mode === "real" || (this.mode === "test" && this.scriptedTestPhase !== null);
     const phase = isCombatPhase || this.mode === "victory" || this.mode === "defeat" ? this.bossPhase : 0;
     const phaseColor = phase === 0 ? 0xd8b65d : phase === 1 ? 0x42d6d2 : 0xe96868;
     const phaseAccent = phase === 0 ? 0xf0cf79 : phase === 1 ? 0x8df7ff : 0xffd36f;
-    const phaseAge = Math.max(0, time - this.phaseChangedAt);
-    const transitionPulse = this.mode === "real" ? 1 - Phaser.Math.Clamp(phaseAge / 1200, 0, 1) : 0;
+    const transitionPulse = this.getPhaseTransitionIntensity(time);
+    const castAge = time - this.bossCastStartedAt;
+    const castActive = isCombatPhase
+      && this.bossCastFamily !== null
+      && castAge >= 0
+      && castAge < this.bossCastDuration;
+    const castProgress = castActive ? Phaser.Math.Clamp(castAge / this.bossCastDuration, 0, 1) : 1;
+    const ultimateActive = isCombatPhase && this.currentFightPhaseId === "ultimate";
+    const ultimateElapsed = ultimateActive
+      ? this.mode === "real"
+        ? time - this.scriptStartedAt - ULTIMATE_AT_MS
+        : time - this.scriptStartedAt
+      : 0;
+    const finaleIntensity = ultimateActive
+      ? Phaser.Math.Clamp((ultimateElapsed - ULTIMATE_FINALE_AUDIO_AT_MS) / 1600, 0, 1)
+      : 0;
+    const tracksEndingPlayer = this.mode === "victory" && absorptionState !== null;
+    const portraitTarget = tracksEndingPlayer ? this.endingPlayerPosition : this.player.state.position;
+    const targetX = isCombatPhase || tracksEndingPlayer
+      ? Phaser.Math.Clamp((portraitTarget.x - bossX) / (this.arena.size * 0.48), -1, 1)
+      : 0;
+    const targetY = isCombatPhase || tracksEndingPlayer
+      ? Phaser.Math.Clamp((portraitTarget.y - bossY) / this.arena.size, -1, 1)
+      : 0;
 
     this.stageGraphics.clear();
     if (this.logoImage) {
@@ -993,12 +1419,35 @@ export class CleopatraScene extends Phaser.Scene {
       return;
     }
 
-    this.stageGraphics.fillStyle(phaseColor, 0.09 + pulse * 0.07 + transitionPulse * 0.08);
-    this.stageGraphics.fillCircle(bossX, bossY - 6 * bossScale, (92 + phase * 8 + transitionPulse * 16) * bossScale);
-    this.stageGraphics.lineStyle(2 + phase, phaseColor, 0.22 + pulse * 0.18 + transitionPulse * 0.24);
-    this.stageGraphics.strokeCircle(bossX, bossY - 6 * bossScale, (104 + phase * 8 + transitionPulse * 18) * bossScale);
-    this.stageGraphics.lineStyle(1.5, phaseAccent, 0.12 + phase * 0.08 + transitionPulse * 0.18);
-    this.stageGraphics.strokeCircle(bossX, bossY - 6 * bossScale, (126 + phase * 10 + transitionPulse * 12) * bossScale);
+    this.stageGraphics.fillStyle(phaseColor, (0.09 + pulse * 0.07 + transitionPulse * 0.08) * auraAlpha);
+    this.stageGraphics.fillCircle(bossX, bossY - 6 * auraScale, (92 + phase * 8 + transitionPulse * 16) * auraScale);
+    this.stageGraphics.lineStyle(2 + phase, phaseColor, (0.22 + pulse * 0.18 + transitionPulse * 0.24) * auraAlpha);
+    this.stageGraphics.strokeCircle(bossX, bossY - 6 * auraScale, (104 + phase * 8 + transitionPulse * 18) * auraScale);
+    this.stageGraphics.lineStyle(1.5, phaseAccent, (0.12 + phase * 0.08 + transitionPulse * 0.18) * auraAlpha);
+    this.stageGraphics.strokeCircle(bossX, bossY - 6 * auraScale, (126 + phase * 10 + transitionPulse * 12) * auraScale);
+
+    if (transitionPulse > 0) {
+      this.stageGraphics.fillStyle(phaseColor, 0.06 * transitionPulse);
+      this.stageGraphics.fillRect(0, Math.max(0, bossY - 118 * bossScale), width, 178 * bossScale);
+      this.stageGraphics.lineStyle(3.2, phaseAccent, 0.36 * transitionPulse);
+      this.stageGraphics.strokeCircle(bossX, bossY - 6 * bossScale, (144 + phase * 12 + transitionPulse * 20) * bossScale);
+      this.stageGraphics.lineStyle(1.4, 0xf8e2a0, 0.32 * transitionPulse);
+      this.stageGraphics.strokeCircle(bossX, bossY - 6 * bossScale, (168 + phase * 12 + transitionPulse * 24) * bossScale);
+      for (let index = 0; index < 12; index += 1) {
+        const angle = -Math.PI / 2 + (Math.PI * 2 * index) / 12 + time * 0.0014;
+        const inner = (88 + phase * 8) * bossScale;
+        const outer = (136 + transitionPulse * 18) * bossScale;
+        const start = new Phaser.Math.Vector2(
+          bossX + Math.cos(angle) * inner,
+          bossY - 6 * bossScale + Math.sin(angle) * inner * 0.62,
+        );
+        const end = new Phaser.Math.Vector2(
+          bossX + Math.cos(angle) * outer,
+          bossY - 6 * bossScale + Math.sin(angle) * outer * 0.62,
+        );
+        this.stageGraphics.lineBetween(start.x, start.y, end.x, end.y);
+      }
+    }
 
     if (isCombatPhase && phase > 0) {
       const orbitCount = phase === 1 ? 6 : 9;
@@ -1028,62 +1477,46 @@ export class CleopatraScene extends Phaser.Scene {
       }
     }
 
-    drawCleopatraPortrait(this.stageGraphics, bossX, bossY, bossScale, { pulse });
+    drawCleopatraPortrait(
+      this.stageGraphics,
+      bossX,
+      bossY + (absorptionState?.yOffset ?? 0) * bossScale,
+      bossScale * (absorptionState?.scale ?? 1),
+      {
+        alpha: absorptionState?.alpha ?? 1,
+        pulse,
+        time,
+        targetX,
+        targetY,
+        phase,
+        transition: transitionPulse,
+        castFamily: castActive ? this.bossCastFamily : null,
+        castProgress,
+        ultimate: ultimateActive,
+        finale: Math.max(finaleIntensity, absorptionState?.overload ?? 0),
+        collapse: absorptionState?.collapse ?? 0,
+      },
+    );
   }
 
   private drawArena(): void {
-    const { x, y, size } = this.arena;
     this.arenaGraphics.clear();
 
     if (this.mode === "menu" || this.mode === "title") {
       return;
     }
 
-    this.arenaGraphics.fillStyle(0x040b12, 0.92);
-    this.arenaGraphics.fillRect(x - 18, y - 18, size + 36, size + 36);
-    this.arenaGraphics.fillStyle(0x07131b, 0.96);
-    this.arenaGraphics.fillRect(x, y, size, size);
-    this.arenaGraphics.fillStyle(0x0e2430, 0.28);
-    this.arenaGraphics.fillRect(x + 7, y + 7, size - 14, size - 14);
-
-    const gridStep = size / 13;
-    this.arenaGraphics.lineStyle(1, 0x31545e, 0.36);
-    for (let offset = gridStep; offset < size; offset += gridStep) {
-      this.arenaGraphics.lineBetween(x + offset, y, x + offset, y + size);
-      this.arenaGraphics.lineBetween(x, y + offset, x + size, y + offset);
-    }
-
-    this.arenaGraphics.lineStyle(3, 0xe8ca7f, 0.92);
-    this.arenaGraphics.strokeRect(x, y, size, size);
-    this.arenaGraphics.lineStyle(1, 0x44d2dc, 0.34);
-    this.arenaGraphics.strokeRect(x - 9, y - 9, size + 18, size + 18);
-    this.arenaGraphics.lineStyle(1, 0xd7ad52, 0.3);
-    this.arenaGraphics.strokeRect(x - 18, y - 18, size + 36, size + 36);
-
-    this.arenaGraphics.lineStyle(3, 0xf0ce75, 0.9);
-    const corner = Math.max(24, size * 0.09);
-    this.arenaGraphics.lineBetween(x - 6, y - 6, x + corner, y - 6);
-    this.arenaGraphics.lineBetween(x - 6, y - 6, x - 6, y + corner);
-    this.arenaGraphics.lineBetween(x + size + 6, y - 6, x + size - corner, y - 6);
-    this.arenaGraphics.lineBetween(x + size + 6, y - 6, x + size + 6, y + corner);
-    this.arenaGraphics.lineBetween(x - 6, y + size + 6, x + corner, y + size + 6);
-    this.arenaGraphics.lineBetween(x - 6, y + size + 6, x - 6, y + size - corner);
-    this.arenaGraphics.lineBetween(x + size + 6, y + size + 6, x + size - corner, y + size + 6);
-    this.arenaGraphics.lineBetween(x + size + 6, y + size + 6, x + size + 6, y + size - corner);
-
-    this.arenaGraphics.fillStyle(0xd4574d, 0.58);
-    for (const [glyphX, glyphY] of [
-      [x + size * 0.18, y + size * 0.18],
-      [x + size * 0.82, y + size * 0.18],
-      [x + size * 0.18, y + size * 0.82],
-      [x + size * 0.82, y + size * 0.82],
-    ]) {
-      this.arenaGraphics.fillTriangle(glyphX, glyphY - 4, glyphX - 5, glyphY + 5, glyphX + 5, glyphY + 5);
-    }
+    drawArenaVisuals(this.arenaGraphics, {
+      arena: this.arena,
+      time: this.currentTime,
+      stage: this.getFightVisualStage(this.currentTime),
+      transition: this.getPhaseTransitionIntensity(this.currentTime),
+    });
   }
 
   private drawUi(time: number): void {
     this.uiGraphics.clear();
+    this.hidePhaseTransitionText();
 
     if (this.mode === "title") {
       const pulse = 0.58 + Math.sin(time * 0.004) * 0.28;
@@ -1105,36 +1538,111 @@ export class CleopatraScene extends Phaser.Scene {
     }
 
     if (this.mode === "real") {
-      this.drawHearts(24, 38, 4.7, 21);
+      this.updateCombatHudDamageState(time);
+      drawCombatHudVisuals(this.uiGraphics, {
+        time,
+        stageWidth: this.stageWidth,
+        stage: this.getFightVisualStage(time),
+        stability: this.player.state.stability,
+        maxStability: this.player.state.maxStability,
+        lostSealIndex: this.hudLostSealIndex,
+        stabilityChangeAge: time - this.hudStabilityChangedAt,
+      });
+      this.drawPhaseTransitionOverlay(time);
       return;
     }
 
     if (this.mode === "test") {
+      this.drawPhaseTransitionOverlay(time);
       return;
     }
   }
 
-  private drawHearts(startX: number, y: number, radius: number, gap: number): void {
-    for (let index = 0; index < this.player.state.maxStability; index += 1) {
-      const x = startX + index * gap;
-      const alpha = index < this.player.state.stability ? 0.95 : 0.2;
-      this.uiGraphics.fillStyle(0xe96868, alpha);
-      this.uiGraphics.fillCircle(x, y, radius);
-      this.uiGraphics.fillCircle(x + radius * 1.23, y, radius);
-      this.uiGraphics.fillTriangle(x - radius, y + radius * 0.6, x + radius * 2.25, y + radius * 0.6, x + radius * 0.62, y + radius * 2.55);
-      this.uiGraphics.lineStyle(1, 0xffb0a8, alpha * 0.42);
-      this.uiGraphics.lineBetween(x - radius * 0.1, y + radius * 0.1, x + radius * 1.35, y + radius * 1.65);
+  private drawPhaseTransitionOverlay(time: number): void {
+    if (!this.announcedFightPhase) {
+      return;
     }
+
+    const age = time - this.phaseAnnouncementStartedAt;
+    if (age < 0 || age > PHASE_TRANSITION_MS) {
+      return;
+    }
+
+    const progress = Phaser.Math.Clamp(age / PHASE_TRANSITION_MS, 0, 1);
+    const alpha = Math.sin(progress * Math.PI);
+    const phase = this.announcedFightPhase;
+    const phaseColor = phase.bossPhase === 0 ? 0xd8b65d : phase.bossPhase === 1 ? 0x42d6d2 : 0xe96868;
+    const accent = phase.id === "ultimate" ? 0xffd36f : phase.bossPhase === 1 ? 0x8df7ff : 0xf8e2a0;
+    const bannerY = Math.max(92, this.arena.y - 78);
+    const bannerHeight = 54;
+    const linePulse = 0.5 + Math.sin(time * 0.018) * 0.5;
+
+    this.uiGraphics.fillStyle(0x02050a, 0.62 * alpha);
+    this.uiGraphics.fillRect(0, bannerY - bannerHeight / 2, this.stageWidth, bannerHeight);
+    this.uiGraphics.fillStyle(phaseColor, 0.12 * alpha);
+    this.uiGraphics.fillRect(0, bannerY - bannerHeight / 2, this.stageWidth, bannerHeight);
+    this.uiGraphics.lineStyle(2, accent, (0.42 + linePulse * 0.18) * alpha);
+    this.uiGraphics.lineBetween(28, bannerY - bannerHeight / 2, this.stageWidth - 28, bannerY - bannerHeight / 2);
+    this.uiGraphics.lineBetween(28, bannerY + bannerHeight / 2, this.stageWidth - 28, bannerY + bannerHeight / 2);
+
+    for (let index = 0; index < 6; index += 1) {
+      const x = Phaser.Math.Linear(48, this.stageWidth - 48, index / 5);
+      const y = bannerY + Math.sin(time * 0.011 + index) * 4;
+      this.uiGraphics.fillStyle(index % 2 === 0 ? accent : 0xd8b65d, 0.46 * alpha);
+      this.uiGraphics.fillTriangle(x, y - 4, x - 4, y + 4, x + 4, y + 4);
+    }
+
+    this.phaseTitleText
+      .setText(phase.id === "ultimate" ? "ULTIMATE" : phase.title.toUpperCase())
+      .setPosition(this.stageWidth / 2, bannerY - 6)
+      .setColor(phase.id === "ultimate" ? "#ffd36f" : "#f8e2a0")
+      .setAlpha(alpha)
+      .setVisible(true);
+    this.phaseSubtitleText
+      .setText(phase.subtitle.toUpperCase())
+      .setPosition(this.stageWidth / 2, bannerY + 18)
+      .setColor(phase.bossPhase === 1 ? "#9fe6ee" : phase.id === "ultimate" ? "#ffdf9a" : "#d8b65d")
+      .setAlpha(alpha * 0.88)
+      .setVisible(true);
+  }
+
+  private hidePhaseTransitionText(): void {
+    if (this.phaseTitleText) {
+      this.phaseTitleText.setVisible(false);
+    }
+
+    if (this.phaseSubtitleText) {
+      this.phaseSubtitleText.setVisible(false);
+    }
+  }
+
+  private resetCombatHudState(): void {
+    this.hudRenderedStability = this.player.state.stability;
+    this.hudLostSealIndex = -1;
+    this.hudStabilityChangedAt = Number.NEGATIVE_INFINITY;
+  }
+
+  private updateCombatHudDamageState(time: number): void {
+    const stability = this.player.state.stability;
+    if (stability < this.hudRenderedStability) {
+      this.hudLostSealIndex = Phaser.Math.Clamp(stability, 0, this.player.state.maxStability - 1);
+      this.hudStabilityChangedAt = time;
+    } else if (stability > this.hudRenderedStability) {
+      this.hudLostSealIndex = -1;
+      this.hudStabilityChangedAt = Number.NEGATIVE_INFINITY;
+    }
+    this.hudRenderedStability = stability;
   }
 
   private drawMenuUi(time: number): void {
     const pulse = 0.5 + Math.sin(time * 0.002) * 0.5;
     const layout = this.getMenuMapLayout();
+    const menuBosses = this.getMenuBosses();
     const centerX = this.stageWidth / 2;
     const active = layout.nodes[this.menuSelectedIndex] ?? layout.nodes[0]!;
-    const lastUnlockedIndex = MENU_BOSSES.reduce((last, boss, index) => boss.enabled ? index : last, 0);
-    const unlockedWidth = MENU_BOSSES.length > 1
-      ? (layout.mapWidth - 104) * (lastUnlockedIndex / (MENU_BOSSES.length - 1))
+    const lastUnlockedIndex = menuBosses.reduce((last, boss, index) => boss.enabled ? index : last, 0);
+    const unlockedWidth = menuBosses.length > 1
+      ? (layout.mapWidth - 104) * (lastUnlockedIndex / (menuBosses.length - 1))
       : 0;
 
     this.uiGraphics.fillStyle(0x061018, 0.2);
@@ -1175,12 +1683,12 @@ export class CleopatraScene extends Phaser.Scene {
     this.uiGraphics.lineStyle(4, 0xf0cf79, 0.82);
     this.uiGraphics.lineBetween(progressX, progressY, progressX + unlockedWidth, progressY);
 
-    for (let index = 0; index < MENU_BOSSES.length; index += 1) {
-      const x = MENU_BOSSES.length === 1
+    for (let index = 0; index < menuBosses.length; index += 1) {
+      const x = menuBosses.length === 1
         ? centerX
-        : progressX + (progressWidth * index) / (MENU_BOSSES.length - 1);
+        : progressX + (progressWidth * index) / (menuBosses.length - 1);
       const selected = index === this.menuSelectedIndex;
-      const enabled = MENU_BOSSES[index]?.enabled ?? false;
+      const enabled = menuBosses[index]?.enabled ?? false;
       const dotStroke = selected ? (enabled ? 0xf0cf79 : 0x8df7ff) : enabled ? 0xf0cf79 : 0x7f8f92;
       const dotFill = selected ? (enabled ? 0xf0cf79 : 0x8df7ff) : enabled ? 0xf0cf79 : 0x26313a;
       this.uiGraphics.fillStyle(0x07131b, 0.96);
@@ -1193,6 +1701,7 @@ export class CleopatraScene extends Phaser.Scene {
   }
 
   private getMenuMapLayout(): MenuMapLayout {
+    const menuBosses = this.getMenuBosses();
     const compact = this.stageHeight < 640;
     const mapWidth = Math.min(this.stageWidth - 28, 368);
     const mapX = (this.stageWidth - mapWidth) / 2;
@@ -1217,7 +1726,7 @@ export class CleopatraScene extends Phaser.Scene {
       titleY,
       playY,
       dotY,
-      nodes: MENU_BOSSES.map((boss, index) => {
+      nodes: menuBosses.map((boss, index) => {
         const offset = index - this.menuSelectedIndex;
         const selected = index === this.menuSelectedIndex;
         return {
@@ -1268,32 +1777,33 @@ export class CleopatraScene extends Phaser.Scene {
 
   private drawEndAnimation(time: number): void {
     const age = Math.max(0, time - this.endingStartedAt);
-    const progress = Phaser.Math.Clamp(age / END_MODAL_DELAY_MS, 0, 1);
-    const eased = Phaser.Math.Easing.Cubic.Out(progress);
     const x = this.endingPlayerPosition.x;
     const y = this.endingPlayerPosition.y;
 
     if (this.mode === "victory") {
-      this.uiGraphics.fillStyle(0xf0cf79, 0.1 + (1 - progress) * 0.12);
-      this.uiGraphics.fillCircle(x, y, 24 + eased * 96);
-      this.uiGraphics.lineStyle(2, 0xf0cf79, 0.8 * (1 - progress));
-      this.uiGraphics.strokeCircle(x, y, 12 + eased * 84);
-      this.uiGraphics.lineStyle(1.5, 0x8df7ff, 0.54 * (1 - progress));
-      this.uiGraphics.strokeCircle(x, y, 28 + eased * 112);
-
-      for (let index = 0; index < 22; index += 1) {
-        const angle = -Math.PI / 2 + Math.sin(index * 11.7) * 0.58;
-        const distance = eased * (46 + (index % 6) * 18);
-        const dustX = x + Math.cos(angle) * distance + Math.sin(index * 3.1) * 16;
-        const dustY = y + Math.sin(angle) * distance - eased * (36 + index * 1.7);
-        const alpha = Phaser.Math.Clamp(0.72 - progress * 0.6, 0, 0.72);
-        this.uiGraphics.fillStyle(index % 3 === 0 ? 0x8df7ff : 0xf0cf79, alpha);
-        this.uiGraphics.fillCircle(dustX, dustY, 2.2 + (index % 4) * 0.45);
-      }
+      const bossScale = this.getBossVisualScale();
+      drawMemoryAbsorptionVisuals(this.uiGraphics, {
+        elapsedMs: age,
+        source: {
+          x: this.bossPosition.x,
+          y: this.bossPosition.y - 6 * bossScale,
+        },
+        target: { x, y },
+        sourceRadius: 112 * bossScale,
+        targetRadius: this.player.state.radius,
+        palette: {
+          primary: 0xf0cf79,
+          secondary: 0x8df7ff,
+          core: 0xffedb0,
+        },
+        drawSeal: drawCleopatraKnowledgeSeal,
+      });
 
       return;
     }
 
+    const progress = Phaser.Math.Clamp(age / DEFEAT_MODAL_DELAY_MS, 0, 1);
+    const eased = Phaser.Math.Easing.Cubic.Out(progress);
     this.uiGraphics.fillStyle(0xe96868, 0.11 * (1 - progress));
     this.uiGraphics.fillCircle(x, y, 20 + eased * 68);
     this.uiGraphics.lineStyle(2, 0xff8b87, 0.82 * (1 - progress));
@@ -1319,7 +1829,7 @@ export class CleopatraScene extends Phaser.Scene {
     const boxX = (this.stageWidth - boxWidth) / 2;
     const boxY = Math.max(112, (this.stageHeight - boxHeight) / 2 - 8);
     const progress = this.finalProgress;
-    const modalAge = Math.max(0, time - this.endingStartedAt - END_MODAL_DELAY_MS);
+    const modalAge = Math.max(0, time - this.endingStartedAt - this.getEndModalDelay());
     const modalAlpha = Phaser.Math.Clamp(modalAge / 260, 0, 1);
     const accent = this.mode === "victory" ? 0xe8ca7f : 0xe96868;
     const mutedAccent = this.mode === "victory" ? 0x8df7ff : 0xffb0a8;
@@ -1397,14 +1907,15 @@ export class CleopatraScene extends Phaser.Scene {
 
     if (this.mode === "menu") {
       const layout = this.getMenuMapLayout();
+      const menuBosses = this.getMenuBosses();
       const active = layout.nodes[this.menuSelectedIndex] ?? layout.nodes[0]!;
-      const heading = this.add.text(this.stageWidth / 2, layout.mapY + 18, "MEMORY PATH", {
+      const heading = this.add.text(this.stageWidth / 2, layout.mapY + 18, this.devMode ? "MEMORY PATH · DEV MODE" : "MEMORY PATH", {
         fontFamily: "Trebuchet MS, sans-serif",
         fontSize: "11px",
         color: "#8fa8b0",
         resolution: this.renderScale,
       }).setOrigin(0.5).setDepth(102);
-      const progress = this.add.text(this.stageWidth / 2, layout.mapY + 35, `${this.menuSelectedIndex + 1} / ${MENU_BOSSES.length}`, {
+      const progress = this.add.text(this.stageWidth / 2, layout.mapY + 35, `${this.menuSelectedIndex + 1} / ${menuBosses.length}`, {
         fontFamily: "Trebuchet MS, sans-serif",
         fontSize: "10px",
         color: "#d8b65d",
@@ -1415,35 +1926,42 @@ export class CleopatraScene extends Phaser.Scene {
       for (const node of layout.nodes) {
         this.makeMemoryNode(
           node,
-          node.selected && node.enabled ? () => this.startRealMode() : undefined,
+          node.selected && node.enabled ? () => this.startSelectedBoss(node.icon) : undefined,
           () => this.setMenuSelection(node.index),
           layout,
         );
       }
       const arrowGap = active.radius * 1.82;
       this.makeMenuArrow(active.x - arrowGap, layout.railY, -1, this.menuSelectedIndex > 0);
-      this.makeMenuArrow(active.x + arrowGap, layout.railY, 1, this.menuSelectedIndex < MENU_BOSSES.length - 1);
+      this.makeMenuArrow(active.x + arrowGap, layout.railY, 1, this.menuSelectedIndex < menuBosses.length - 1);
       this.makeMenuDots(layout);
       this.makeLabel(centerX, layout.playY + 55, active.enabled ? "Swipe to browse memories" : "Clear the previous memory to unlock", 10, active.enabled ? "#78919b" : "#a87856");
+      this.makeButton(this.stageWidth - 42, 34, this.devMode ? "DEV ON" : "DEV", () => this.toggleDevelopmentMode(), 64);
       return;
     }
 
     if (this.mode === "real") {
-      this.makeButton(this.stageWidth - 44, 42, "Lab", () => this.startTestMode(), 58);
+      if (this.canUseLab()) {
+        this.makeLabButton();
+      }
       return;
     }
 
     if (this.mode === "test") {
-      const buttonWidth = Math.min(156, Math.max(130, this.stageWidth * 0.39));
-      const col1 = this.stageWidth * 0.29;
-      const col2 = this.stageWidth * 0.71;
-      const row1 = this.arena.y + this.arena.size + 44;
-      const row2 = row1 + 42;
+      const buttonWidth = Math.min(154, Math.max(128, this.stageWidth * 0.38));
+      const col1 = this.stageWidth * 0.28;
+      const col2 = this.stageWidth * 0.72;
+      const row1 = Math.min(this.arena.y + this.arena.size + 46, this.stageHeight - 116);
+      const row2 = row1 + 44;
       this.makeButton(48, 42, "Menu", () => this.showMenu(), 70);
-      this.makeButton(col1, row1, "Phase 1", () => this.startTestPhase(FIGHT_PHASES[0]!), buttonWidth);
-      this.makeButton(col2, row1, "Phase 2", () => this.startTestPhase(FIGHT_PHASES[1]!), buttonWidth);
-      this.makeButton(col1, row2, "Phase 3", () => this.startTestPhase(FIGHT_PHASES[2]!), buttonWidth);
-      this.makeButton(col2, row2, "Ultimate", () => this.startTestPhase(FIGHT_PHASES[3]!), buttonWidth);
+      if (this.scriptedTestPhase) {
+        return;
+      }
+
+      this.makeButton(col1, row1, FIGHT_PHASES[0].title, () => this.startTestPhase(FIGHT_PHASES[0]), buttonWidth);
+      this.makeButton(col2, row1, FIGHT_PHASES[1].title, () => this.startTestPhase(FIGHT_PHASES[1]), buttonWidth);
+      this.makeButton(col1, row2, FIGHT_PHASES[2].title, () => this.startTestPhase(FIGHT_PHASES[2]), buttonWidth);
+      this.makeButton(col2, row2, FIGHT_PHASES[3].title, () => this.startTestPhase(FIGHT_PHASES[3]), buttonWidth);
       return;
     }
 
@@ -1458,6 +1976,7 @@ export class CleopatraScene extends Phaser.Scene {
       const boxY = Math.max(112, (this.stageHeight - boxHeight) / 2 - 8);
       const title = this.mode === "victory" ? "MEMORY CLEARED" : "MEMORY LOST";
       const accent = this.mode === "victory" ? "#f0d58a" : "#ff8b87";
+      const isUltimateLabVictory = this.mode === "victory" && this.endOrigin === "lab-ultimate" && this.canUseLab();
       this.makeLabel(centerX, boxY + 31, title, 23, accent, "Georgia, serif");
 
       const quote = this.add.text(boxX + 116, boxY + 62, this.endDialogLine, {
@@ -1471,8 +1990,24 @@ export class CleopatraScene extends Phaser.Scene {
       }).setOrigin(0, 0).setDepth(101);
       quote.setData("ui-button", true);
 
-      this.makeEndActionButton(centerX - 66, boxY + 262, "Retry", "retry", () => this.startRealMode());
-      this.makeEndActionButton(centerX + 66, boxY + 262, "Menu", "menu", () => this.showMenu());
+      const endActionOffset = isUltimateLabVictory ? 72 : 66;
+      const endActionWidth = isUltimateLabVictory ? 132 : 112;
+      this.makeEndActionButton(
+        centerX - endActionOffset,
+        boxY + 262,
+        isUltimateLabVictory ? "Retry Ultimate" : "Retry",
+        "retry",
+        isUltimateLabVictory ? () => this.restartUltimateLab() : () => this.startRealMode(),
+        endActionWidth,
+      );
+      this.makeEndActionButton(
+        centerX + endActionOffset,
+        boxY + 262,
+        isUltimateLabVictory ? "Lab" : "Menu",
+        "menu",
+        isUltimateLabVictory ? () => this.startTestMode() : () => this.showMenu(),
+        endActionWidth,
+      );
     }
   }
 
@@ -1605,10 +2140,10 @@ export class CleopatraScene extends Phaser.Scene {
   private makeMenuDots(layout: MenuMapLayout): void {
     const progressX = layout.mapX + 52;
     const progressWidth = layout.mapWidth - 104;
-    for (let index = 0; index < MENU_BOSSES.length; index += 1) {
-      const x = MENU_BOSSES.length === 1
+    for (let index = 0; index < layout.nodes.length; index += 1) {
+      const x = layout.nodes.length === 1
         ? this.stageWidth / 2
-        : progressX + (progressWidth * index) / (MENU_BOSSES.length - 1);
+        : progressX + (progressWidth * index) / (layout.nodes.length - 1);
       const hit = this.add.circle(x, layout.dotY, 18, 0xffffff, 0.001)
         .setDepth(103)
         .setInteractive({ useHandCursor: true });
@@ -1637,21 +2172,7 @@ export class CleopatraScene extends Phaser.Scene {
     }
 
     if (icon === "davinci") {
-      graphics.lineStyle(1, 0xd8b65d, 0.34 * alpha);
-      graphics.strokeCircle(x, y, scale * 0.74);
-      graphics.lineBetween(x - scale * 0.6, y + scale * 0.34, x + scale * 0.6, y - scale * 0.34);
-      graphics.fillStyle(0x6a3f2a, alpha);
-      graphics.fillRoundedRect(x - scale * 0.5, y - scale * 0.64, scale, scale * 0.26, scale * 0.08);
-      graphics.fillStyle(0xd19a63, alpha);
-      graphics.fillEllipse(x, y - scale * 0.08, scale * 0.56, scale * 0.68);
-      graphics.fillStyle(0xe7d6b7, 0.92 * alpha);
-      graphics.fillTriangle(x - scale * 0.42, y + scale * 0.12, x + scale * 0.42, y + scale * 0.12, x, y + scale * 0.88);
-      graphics.lineStyle(2, 0x2a1a12, 0.7 * alpha);
-      graphics.lineBetween(x - scale * 0.26, y - scale * 0.08, x - scale * 0.04, y - scale * 0.02);
-      graphics.lineBetween(x + scale * 0.04, y - scale * 0.02, x + scale * 0.26, y - scale * 0.08);
-      graphics.lineStyle(1.5, 0x42d6d2, 0.72 * alpha);
-      graphics.strokeCircle(x + scale * 0.54, y + scale * 0.48, scale * 0.2);
-      graphics.lineBetween(x + scale * 0.42, y + scale * 0.58, x + scale * 0.7, y + scale * 0.76);
+      drawLeonardoMenuIcon(graphics, x, y, scale, alpha);
       return;
     }
 
@@ -1689,8 +2210,8 @@ export class CleopatraScene extends Phaser.Scene {
     label: string,
     icon: "retry" | "menu",
     onClick: () => void,
+    width = 112,
   ): void {
-    const width = 112;
     const height = 38;
     const rect = this.add.rectangle(x, y, width, height, 0x111923, 0.94)
       .setStrokeStyle(1.4, 0xd8b65d, 0.72)
@@ -1698,9 +2219,14 @@ export class CleopatraScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     const iconGraphics = this.add.graphics().setDepth(101);
-    this.drawEndButtonIcon(iconGraphics, icon, icon === "retry" ? x - 35 : x - 32, y);
+    this.drawEndButtonIcon(
+      iconGraphics,
+      icon,
+      x - width / 2 + (icon === "retry" ? 21 : 24),
+      y,
+    );
 
-    const text = this.add.text(x + 11, y, label, {
+    const text = this.add.text(x + Math.max(11, width * 0.1), y, label, {
       fontFamily: "Trebuchet MS, sans-serif",
       fontSize: "13px",
       color: "#f0d58a",
@@ -1802,6 +2328,36 @@ export class CleopatraScene extends Phaser.Scene {
     text.on("pointerup", onClick);
     rect.setData("ui-button", true);
     text.setData("ui-button", true);
+  }
+
+  private makeLabButton(): void {
+    const x = this.stageWidth - 44;
+    const y = 42;
+    const width = 58;
+    const height = 32;
+    const graphics = this.add.graphics().setDepth(100);
+    const render = (hovered: boolean): void => {
+      drawLabButtonVisuals(graphics, { x, y, width, height, hovered });
+    };
+    render(false);
+
+    const text = this.add.text(x + 8, y, "LAB", {
+      fontFamily: "Trebuchet MS, sans-serif",
+      fontSize: "10px",
+      color: "#f0d58a",
+      letterSpacing: 1,
+      resolution: this.renderScale,
+    }).setOrigin(0.5).setDepth(101);
+    const hitArea = this.add.rectangle(x, y, width, height, 0x000000, 0.001)
+      .setDepth(102)
+      .setInteractive({ useHandCursor: true });
+
+    hitArea.on("pointerover", () => render(true));
+    hitArea.on("pointerout", () => render(false));
+    hitArea.on("pointerup", () => this.startTestMode());
+    graphics.setData("ui-button", true);
+    text.setData("ui-button", true);
+    hitArea.setData("ui-button", true);
   }
 
   private clearButtons(): void {

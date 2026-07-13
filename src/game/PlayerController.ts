@@ -1,4 +1,9 @@
 import Phaser from "phaser";
+import {
+  playerMaxSpeedForArena,
+  playerRadiusForArena,
+} from "./mechanics/leonardoPerspectiveGeometry";
+import { drawPlayerVisuals, type PlayerVisualState } from "./rendering/PlayerVisuals";
 import type { ArenaBounds, PlayerState } from "./types";
 
 export class PlayerController {
@@ -9,6 +14,8 @@ export class PlayerController {
   private readonly graphics: Phaser.GameObjects.Graphics;
   private readonly joystickGraphics: Phaser.GameObjects.Graphics;
   private readonly controlVector = new Phaser.Math.Vector2(0, 0);
+  private readonly visualDirection = new Phaser.Math.Vector2(0, -1);
+  private readonly visualState: PlayerVisualState;
   private controlsEnabled = false;
   private playerVisible = true;
   private activePointerId: number | null = null;
@@ -19,6 +26,7 @@ export class PlayerController {
   private joystickHomeX = 0;
   private joystickHomeY = 0;
   private controlZone = new Phaser.Geom.Rectangle(0, 0, 0, 0);
+  private lastDamageAt = Number.NEGATIVE_INFINITY;
 
   constructor(scene: Phaser.Scene, arena: ArenaBounds) {
     this.scene = scene;
@@ -30,6 +38,17 @@ export class PlayerController {
       maxStability: 3,
       invulnerableUntil: 0,
     };
+    this.visualState = {
+      time: 0,
+      x: this.state.position.x,
+      y: this.state.position.y,
+      radius: this.state.radius,
+      directionX: 0,
+      directionY: -1,
+      movementStrength: 0,
+      invulnerable: false,
+      hitAge: Number.POSITIVE_INFINITY,
+    };
 
     this.graphics = scene.add.graphics().setDepth(60);
     this.joystickGraphics = scene.add.graphics().setDepth(86);
@@ -39,6 +58,7 @@ export class PlayerController {
 
   update(time: number, delta: number): void {
     this.refreshRadius();
+    this.updateVisualDirection(delta);
     this.move(delta);
     this.draw(time);
     this.drawJoystick();
@@ -51,8 +71,17 @@ export class PlayerController {
 
     this.state.stability -= 1;
     this.state.invulnerableUntil = time + 900;
+    this.lastDamageAt = time;
     this.scene.cameras.main.shake(120, 0.004);
     return true;
+  }
+
+  restoreStability(time: number, invulnerabilityMs = 700): void {
+    this.state.stability = this.state.maxStability;
+    this.state.invulnerableUntil = Math.max(
+      this.state.invulnerableUntil,
+      time + invulnerabilityMs,
+    );
   }
 
   reset(): void {
@@ -61,6 +90,8 @@ export class PlayerController {
     this.state.position.set(this.arena.x + this.arena.size / 2, this.arena.y + this.arena.size * 0.66);
     this.state.stability = this.state.maxStability;
     this.state.invulnerableUntil = 0;
+    this.lastDamageAt = Number.NEGATIVE_INFINITY;
+    this.visualDirection.set(0, -1);
     this.draw(0);
   }
 
@@ -92,52 +123,55 @@ export class PlayerController {
   }
 
   destroy(): void {
+    this.scene.input.off("pointerdown", this.handlePointerDown, this);
+    this.scene.input.off("pointermove", this.handlePointerMove, this);
+    this.scene.input.off("pointerup", this.handlePointerUp, this);
+    this.scene.input.off("pointerupoutside", this.handlePointerUp, this);
+    this.releaseJoystick();
     this.graphics.destroy();
     this.joystickGraphics.destroy();
   }
 
   private bindInput(): void {
-    this.scene.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      if (!this.controlsEnabled || !this.isPointerInsideJoystick(pointer)) {
-        return;
-      }
+    this.scene.input.on("pointerdown", this.handlePointerDown, this);
+    this.scene.input.on("pointermove", this.handlePointerMove, this);
+    this.scene.input.on("pointerup", this.handlePointerUp, this);
+    this.scene.input.on("pointerupoutside", this.handlePointerUp, this);
+  }
 
-      this.activePointerId = pointer.id;
-      this.joystickX = Phaser.Math.Clamp(
-        pointer.worldX,
-        this.controlZone.x + this.joystickRadius,
-        this.controlZone.right - this.joystickRadius,
-      );
-      this.joystickY = Phaser.Math.Clamp(
-        pointer.worldY,
-        this.controlZone.y + this.joystickRadius,
-        this.controlZone.bottom - this.joystickRadius,
-      );
+  private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    if (!this.controlsEnabled || !this.isPointerInsideJoystick(pointer)) {
+      return;
+    }
+
+    this.activePointerId = pointer.id;
+    this.joystickX = Phaser.Math.Clamp(
+      pointer.worldX,
+      this.controlZone.x + this.joystickRadius,
+      this.controlZone.right - this.joystickRadius,
+    );
+    this.joystickY = Phaser.Math.Clamp(
+      pointer.worldY,
+      this.controlZone.y + this.joystickRadius,
+      this.controlZone.bottom - this.joystickRadius,
+    );
+    this.updateJoystick(pointer);
+  }
+
+  private handlePointerMove(pointer: Phaser.Input.Pointer): void {
+    if (this.activePointerId === pointer.id) {
       this.updateJoystick(pointer);
-    });
+    }
+  }
 
-    this.scene.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
-      if (this.activePointerId !== pointer.id) {
-        return;
-      }
-      this.updateJoystick(pointer);
-    });
-
-    this.scene.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
-      if (this.activePointerId === pointer.id) {
-        this.releaseJoystick();
-      }
-    });
-
-    this.scene.input.on("pointerupoutside", (pointer: Phaser.Input.Pointer) => {
-      if (this.activePointerId === pointer.id) {
-        this.releaseJoystick();
-      }
-    });
+  private handlePointerUp(pointer: Phaser.Input.Pointer): void {
+    if (this.activePointerId === pointer.id) {
+      this.releaseJoystick();
+    }
   }
 
   private refreshRadius(): void {
-    this.state.radius = Phaser.Math.Clamp(this.arena.size * 0.02, 5.3, 7.4);
+    this.state.radius = playerRadiusForArena(this.arena.size);
   }
 
   private move(delta: number): void {
@@ -145,11 +179,20 @@ export class PlayerController {
       return;
     }
 
-    const speed = Phaser.Math.Clamp(this.arena.size * 0.72, 180, 255);
+    const speed = playerMaxSpeedForArena(this.arena.size);
     const step = speed * this.controlStrength * (delta / 1000);
     this.state.position.x += this.controlVector.x * step;
     this.state.position.y += this.controlVector.y * step;
     this.clampToArena();
+  }
+
+  private updateVisualDirection(delta: number): void {
+    if (this.controlStrength <= 0.02 || this.controlVector.lengthSq() === 0) {
+      return;
+    }
+
+    const follow = Phaser.Math.Clamp(delta / 85, 0, 1);
+    this.visualDirection.lerp(this.controlVector, follow).normalize();
   }
 
   private clampToArena(): void {
@@ -224,17 +267,16 @@ export class PlayerController {
       return;
     }
 
-    const isInvulnerable = time < this.state.invulnerableUntil;
-    const pulse = 0.5 + Math.sin(time * 0.018) * 0.5;
-    const alpha = isInvulnerable ? 0.35 + pulse * 0.45 : 1;
-
-    this.graphics.clear();
-    this.graphics.fillStyle(0xf8f1d1, alpha);
-    this.graphics.fillCircle(this.state.position.x, this.state.position.y, this.state.radius);
-    this.graphics.lineStyle(1.5, 0xffffff, alpha * 0.8);
-    this.graphics.strokeCircle(this.state.position.x, this.state.position.y, this.state.radius + 3);
-    this.graphics.lineStyle(1, 0x4fe6f1, alpha * 0.35);
-    this.graphics.strokeCircle(this.state.position.x, this.state.position.y, this.state.radius + 8 + pulse * 3);
+    this.visualState.time = time;
+    this.visualState.x = this.state.position.x;
+    this.visualState.y = this.state.position.y;
+    this.visualState.radius = this.state.radius;
+    this.visualState.directionX = this.visualDirection.x;
+    this.visualState.directionY = this.visualDirection.y;
+    this.visualState.movementStrength = this.controlsEnabled ? this.controlStrength : 0;
+    this.visualState.invulnerable = time < this.state.invulnerableUntil;
+    this.visualState.hitAge = time - this.lastDamageAt;
+    drawPlayerVisuals(this.graphics, this.visualState);
   }
 
   private drawJoystick(): void {

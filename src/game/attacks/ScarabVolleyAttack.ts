@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { drawScarabBody, drawScarabTrail } from "../rendering/ScarabVisuals";
 import type { Attack, AttackContext, PlayerState } from "../types";
 
 interface ScarabProjectile {
@@ -160,56 +161,12 @@ export class ScarabVolleyAttack implements Attack {
     this.graphics.clear();
 
     for (const projectile of this.projectiles) {
-      this.drawTrail(projectile);
-      this.drawScarab(projectile, time);
+      const direction = projectile.velocity.clone().normalize();
+      drawScarabTrail(this.graphics, projectile.position, direction, { variant: "normal" });
+      drawScarabBody(this.graphics, projectile.position, direction, {
+        variant: "normal",
+        time: time - projectile.spawnTime,
+      });
     }
-  }
-
-  private drawTrail(projectile: ScarabProjectile): void {
-    const direction = projectile.velocity.clone().normalize();
-
-    for (let index = 0; index < 8; index += 1) {
-      const distance = 10 + index * 8;
-      const point = projectile.position.clone().subtract(direction.clone().scale(distance));
-      const alpha = Phaser.Math.Clamp(0.32 - index * 0.035, 0.04, 0.32);
-      const radius = 5 - index * 0.36;
-
-      this.graphics.fillStyle(index % 2 === 0 ? 0xf0c75d : 0x35d6cb, alpha);
-      this.graphics.fillCircle(point.x, point.y, radius);
-    }
-  }
-
-  private drawScarab(projectile: ScarabProjectile, time: number): void {
-    const direction = projectile.velocity.clone().normalize();
-    const normal = new Phaser.Math.Vector2(-direction.y, direction.x);
-    const position = projectile.position;
-    const wingPulse = 0.5 + Math.sin((time - projectile.spawnTime) * 0.028) * 0.5;
-    const head = position.clone().add(direction.clone().scale(8));
-    const tail = position.clone().subtract(direction.clone().scale(9));
-    const leftWing = position.clone().add(normal.clone().scale(8 + wingPulse * 2));
-    const rightWing = position.clone().subtract(normal.clone().scale(8 + wingPulse * 2));
-
-    this.graphics.fillStyle(0x173f57, 0.95);
-    this.graphics.beginPath();
-    this.graphics.moveTo(head.x, head.y);
-    this.graphics.lineTo(leftWing.x, leftWing.y);
-    this.graphics.lineTo(tail.x, tail.y);
-    this.graphics.lineTo(rightWing.x, rightWing.y);
-    this.graphics.closePath();
-    this.graphics.fillPath();
-
-    this.graphics.fillStyle(0xe8bd55, 0.98);
-    this.graphics.fillCircle(head.x, head.y, 5);
-    this.graphics.lineStyle(2, 0xffe39b, 0.78);
-    this.graphics.strokeCircle(position.x, position.y, 11);
-
-    this.graphics.lineStyle(1, 0x071018, 0.86);
-    this.graphics.lineBetween(tail.x, tail.y, head.x, head.y);
-    this.graphics.lineBetween(position.x, position.y, position.x + normal.x * 8, position.y + normal.y * 8);
-    this.graphics.lineBetween(position.x, position.y, position.x - normal.x * 8, position.y - normal.y * 8);
-
-    this.graphics.lineStyle(2, 0xd8b65d, 0.62);
-    this.graphics.lineBetween(position.x + normal.x * 8, position.y + normal.y * 8, position.x + normal.x * 15, position.y + normal.y * 15);
-    this.graphics.lineBetween(position.x - normal.x * 8, position.y - normal.y * 8, position.x - normal.x * 15, position.y - normal.y * 15);
   }
 }

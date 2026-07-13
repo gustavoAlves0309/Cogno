@@ -44,14 +44,20 @@ export class WadjetConeAttack implements Attack {
       return false;
     }
 
+    const reach = this.getActiveReach();
+    if (reach <= 0) {
+      return false;
+    }
+
+    const hazard = this.getHazardTriangle(reach);
     const { x, y } = player.position;
     const radius = player.radius;
     return (
-      Phaser.Geom.Triangle.Contains(this.triangle, x, y) ||
-      Phaser.Geom.Triangle.Contains(this.triangle, x - radius, y) ||
-      Phaser.Geom.Triangle.Contains(this.triangle, x + radius, y) ||
-      Phaser.Geom.Triangle.Contains(this.triangle, x, y - radius) ||
-      Phaser.Geom.Triangle.Contains(this.triangle, x, y + radius)
+      Phaser.Geom.Triangle.Contains(hazard, x, y) ||
+      Phaser.Geom.Triangle.Contains(hazard, x - radius, y) ||
+      Phaser.Geom.Triangle.Contains(hazard, x + radius, y) ||
+      Phaser.Geom.Triangle.Contains(hazard, x, y - radius) ||
+      Phaser.Geom.Triangle.Contains(hazard, x, y + radius)
     );
   }
 
@@ -96,19 +102,18 @@ export class WadjetConeAttack implements Attack {
     const { arena } = this.context;
     const progress = this.getStateProgress(age);
     const direction = this.side === "left" ? 1 : -1;
-    const sourceX = this.side === "left" ? arena.x - 22 : arena.x + arena.size + 22;
+    const sourceX = this.side === "left" ? arena.x - 28 : arena.x + arena.size + 28;
     const sourceY = arena.y + arena.size * 0.5;
     const cobraAlpha = this.state === "vanish" ? 1 - progress : 1;
     const emerge = this.state === "emerge" ? progress : 1;
-    const headX = sourceX + direction * Phaser.Math.Linear(10, 58, Phaser.Math.Easing.Cubic.Out(emerge));
+    const headX = sourceX + direction * Phaser.Math.Linear(8, 72, Phaser.Math.Easing.Cubic.Out(emerge));
 
     if (this.state === "telegraph") {
-      this.drawCone(age, 0.34 + progress * 0.12, 0.86, false);
-      this.drawSafeCorners(false);
+      this.drawRitualWarning(age, progress);
+      this.drawArenaSeals(age, false);
     } else if (this.state === "active") {
-      const pulse = 0.5 + Math.sin(age * 0.04) * 0.5;
-      this.drawCone(age, 0.68 + pulse * 0.08, 1, true);
-      this.drawSafeCorners(true);
+      this.drawVenomStrike(age, progress);
+      this.drawArenaSeals(age, true);
     }
 
     this.drawCobra(sourceX, sourceY, headX, direction, age, cobraAlpha);
@@ -157,10 +162,29 @@ export class WadjetConeAttack implements Attack {
     return Phaser.Math.Clamp((age - starts[this.state]) / durations[this.state], 0, 1);
   }
 
-  private drawCone(age: number, fillAlpha: number, edgeAlpha: number, active: boolean): void {
-    const shimmer = 0.5 + Math.sin(age * 0.022) * 0.5;
+  private getActiveReach(): number {
+    const strikeIn = Phaser.Math.Clamp(this.getStateProgress(this.age) / 0.16, 0, 1);
+    return Phaser.Math.Easing.Cubic.Out(strikeIn);
+  }
 
-    this.graphics.fillStyle(active ? 0x1fbf7f : 0x2ed194, fillAlpha);
+  private getHazardTriangle(reach: number): Phaser.Geom.Triangle {
+    const clamped = Phaser.Math.Clamp(reach, 0, 1);
+
+    return new Phaser.Geom.Triangle(
+      this.triangle.x1,
+      this.triangle.y1,
+      Phaser.Math.Linear(this.triangle.x1, this.triangle.x2, clamped),
+      Phaser.Math.Linear(this.triangle.y1, this.triangle.y2, clamped),
+      Phaser.Math.Linear(this.triangle.x1, this.triangle.x3, clamped),
+      Phaser.Math.Linear(this.triangle.y1, this.triangle.y3, clamped),
+    );
+  }
+
+  private drawRitualWarning(age: number, progress: number): void {
+    const shimmer = 0.5 + Math.sin(age * 0.02) * 0.5;
+    const reveal = Phaser.Math.Easing.Sine.Out(progress);
+
+    this.graphics.fillStyle(0x0a332f, 0.1 + reveal * 0.08);
     this.graphics.fillTriangle(
       this.triangle.x1,
       this.triangle.y1,
@@ -170,51 +194,109 @@ export class WadjetConeAttack implements Attack {
       this.triangle.y3,
     );
 
-    this.graphics.lineStyle(active ? 8 : 4, active ? 0x9effc8 : 0xa4ffd0, edgeAlpha);
+    this.graphics.lineStyle(3, 0xf0d58a, 0.34 + shimmer * 0.18);
     this.graphics.lineBetween(this.triangle.x1, this.triangle.y1, this.triangle.x2, this.triangle.y2);
     this.graphics.lineBetween(this.triangle.x1, this.triangle.y1, this.triangle.x3, this.triangle.y3);
 
-    this.graphics.lineStyle(2, 0xe8ca7f, active ? 0.42 : 0.2 + shimmer * 0.18);
-    for (let step = 0.18; step <= 0.86; step += 0.16) {
-      const topX = Phaser.Math.Linear(this.triangle.x1, this.triangle.x2, step);
-      const topY = Phaser.Math.Linear(this.triangle.y1, this.triangle.y2, step);
-      const bottomX = Phaser.Math.Linear(this.triangle.x1, this.triangle.x3, step);
-      const bottomY = Phaser.Math.Linear(this.triangle.y1, this.triangle.y3, step);
-      this.graphics.lineBetween(topX, topY, bottomX, bottomY);
+    this.graphics.lineStyle(1.5, 0x8df7ff, 0.18 + reveal * 0.18);
+    this.graphics.lineBetween(this.triangle.x2, this.triangle.y2, this.triangle.x3, this.triangle.y3);
+
+    for (let step = 0.18; step <= 0.88; step += 0.14) {
+      const bandAlpha = Phaser.Math.Clamp((reveal - step * 0.42) * 0.8, 0.08, 0.38);
+      this.drawTriangleBand(this.triangle, step, step % 0.28 < 0.14 ? 0xf0d58a : 0x8df7ff, bandAlpha, 2);
+    }
+
+    for (let step = 0.28; step <= 0.78; step += 0.25) {
+      const x = Phaser.Math.Linear(this.triangle.x1, (this.triangle.x2 + this.triangle.x3) * 0.5, step);
+      const y = Phaser.Math.Linear(this.triangle.y1, (this.triangle.y2 + this.triangle.y3) * 0.5, step);
+      const size = 5 + shimmer * 2;
+      this.graphics.lineStyle(1.4, 0xf8f1d1, (0.16 + shimmer * 0.16) * reveal);
+      this.graphics.strokeTriangle(x, y - size, x - size, y, x, y + size);
+    }
+  }
+
+  private drawVenomStrike(age: number, progress: number): void {
+    const pulse = 0.5 + Math.sin(age * 0.04) * 0.5;
+    const reach = this.getActiveReach();
+    const hazard = this.getHazardTriangle(reach);
+    const alpha = 0.56 + pulse * 0.08;
+
+    this.graphics.fillStyle(0x0a4f42, 0.36 * reach);
+    this.graphics.fillTriangle(hazard.x1, hazard.y1, hazard.x2, hazard.y2, hazard.x3, hazard.y3);
+    this.graphics.fillStyle(0x1fbf7f, 0.22 * reach);
+    this.graphics.fillTriangle(hazard.x1, hazard.y1, hazard.x2, hazard.y2, hazard.x3, hazard.y3);
+
+    this.graphics.lineStyle(10, 0x1fbf7f, 0.22 * reach);
+    this.graphics.lineBetween(hazard.x1, hazard.y1, hazard.x2, hazard.y2);
+    this.graphics.lineBetween(hazard.x1, hazard.y1, hazard.x3, hazard.y3);
+    this.graphics.lineStyle(3, 0xf0d58a, alpha * reach);
+    this.graphics.lineBetween(hazard.x1, hazard.y1, hazard.x2, hazard.y2);
+    this.graphics.lineBetween(hazard.x1, hazard.y1, hazard.x3, hazard.y3);
+
+    const waveStart = Phaser.Math.Clamp(reach - 0.72, 0.16, 0.32);
+    for (let step = waveStart; step <= reach; step += 0.11) {
+      const wave = 0.5 + Math.sin(age * 0.028 + step * 9) * 0.5;
+      const width = Phaser.Math.Linear(5, 13, step) + wave * 2;
+      this.drawTriangleBand(hazard, step, step > reach - 0.12 ? 0xf8f1d1 : 0x8df7ff, 0.2 + wave * 0.32, width);
+    }
+
+    if (reach > 0.04) {
+      const lip = Phaser.Math.Clamp(reach, 0.08, 1);
+      this.drawTriangleBand(this.triangle, lip, 0xfff2c0, 0.76 * (1 - progress * 0.2), 4);
     }
   }
 
   private drawCobra(sourceX: number, sourceY: number, headX: number, direction: number, age: number, alpha: number): void {
     const hoodPulse = 0.5 + Math.sin(age * 0.026) * 0.5;
-    const segmentCount = 7;
+    const segmentCount = 9;
 
-    this.graphics.lineStyle(8, 0x0f5b46, alpha * 0.72);
-    this.graphics.lineBetween(sourceX - direction * 30, sourceY, headX + direction * 10, sourceY);
-    this.graphics.lineStyle(3, 0x9effc8, alpha * 0.34);
-    this.graphics.lineBetween(sourceX - direction * 18, sourceY - 3, headX + direction * 18, sourceY - 3);
+    this.graphics.lineStyle(15, 0x07131b, alpha * 0.72);
+    this.graphics.lineBetween(sourceX - direction * 52, sourceY + 2, headX + direction * 8, sourceY + 2);
+    this.graphics.lineStyle(9, 0x0f5b46, alpha * 0.84);
+    this.graphics.lineBetween(sourceX - direction * 46, sourceY, headX + direction * 10, sourceY);
+    this.graphics.lineStyle(3, 0x8df7ff, alpha * 0.24);
+    this.graphics.lineBetween(sourceX - direction * 30, sourceY - 4, headX + direction * 18, sourceY - 4);
 
     for (let index = 0; index < segmentCount; index += 1) {
       const t = index / (segmentCount - 1);
-      const x = Phaser.Math.Linear(sourceX - direction * 28, headX - direction * 13, t);
-      const y = sourceY + Math.sin(age * 0.014 + index * 0.9) * 7;
-      const radius = Phaser.Math.Linear(7, 12, t);
-      this.graphics.fillStyle(index % 2 === 0 ? 0x0f5b46 : 0x1d7a58, alpha * Phaser.Math.Linear(0.62, 0.92, t));
+      const x = Phaser.Math.Linear(sourceX - direction * 48, headX - direction * 16, t);
+      const y = sourceY + Math.sin(age * 0.014 + index * 0.82) * 6;
+      const radius = Phaser.Math.Linear(6.5, 11, t);
+      this.graphics.fillStyle(index % 2 === 0 ? 0x0f5b46 : 0x1d7a58, alpha * Phaser.Math.Linear(0.54, 0.9, t));
       this.graphics.fillCircle(x, y, radius);
+      this.graphics.lineStyle(1, 0xf0d58a, alpha * Phaser.Math.Linear(0.12, 0.34, t));
+      this.graphics.lineBetween(x - direction * radius * 0.58, y - radius * 0.6, x + direction * radius * 0.58, y + radius * 0.6);
     }
 
+    this.graphics.fillStyle(0x061018, alpha * 0.72);
+    this.graphics.fillTriangle(
+      headX - direction * 16,
+      sourceY - 39,
+      headX - direction * 16,
+      sourceY + 39,
+      headX + direction * (39 + hoodPulse * 4),
+      sourceY,
+    );
     this.graphics.fillStyle(0x0f5b46, alpha);
     this.graphics.fillTriangle(
       headX - direction * 12,
-      sourceY - 30,
+      sourceY - 34,
       headX - direction * 12,
-      sourceY + 30,
-      headX + direction * (32 + hoodPulse * 4),
+      sourceY + 34,
+      headX + direction * (36 + hoodPulse * 4),
       sourceY,
     );
+    this.graphics.lineStyle(2, 0xf0d58a, alpha * 0.56);
+    this.graphics.lineBetween(headX - direction * 10, sourceY - 27, headX + direction * 24, sourceY - 4);
+    this.graphics.lineBetween(headX - direction * 10, sourceY + 27, headX + direction * 24, sourceY + 4);
+    this.graphics.lineBetween(headX - direction * 10, sourceY, headX + direction * 28, sourceY);
+
     this.graphics.fillStyle(0x51ddb0, alpha);
-    this.graphics.fillEllipse(headX + direction * 18, sourceY, 34, 27);
-    this.graphics.lineStyle(2, 0xe8ca7f, alpha * 0.72);
-    this.graphics.strokeEllipse(headX + direction * 18, sourceY, 43, 34);
+    this.graphics.fillEllipse(headX + direction * 18, sourceY, 36, 28);
+    this.graphics.fillStyle(0x0b7f5a, alpha * 0.72);
+    this.graphics.fillEllipse(headX + direction * 24, sourceY, 20, 18);
+    this.graphics.lineStyle(2, 0xe8ca7f, alpha * 0.8);
+    this.graphics.strokeEllipse(headX + direction * 18, sourceY, 45, 36);
     this.graphics.fillStyle(0xf0d174, alpha * 0.98);
     this.graphics.fillCircle(headX + direction * 27, sourceY - 6, 3);
     this.graphics.fillCircle(headX + direction * 27, sourceY + 6, 3);
@@ -223,17 +305,33 @@ export class WadjetConeAttack implements Attack {
     this.graphics.lineBetween(headX + direction * 34, sourceY, headX + direction * 49, sourceY + 5);
   }
 
-  private drawSafeCorners(active: boolean): void {
+  private drawTriangleBand(triangle: Phaser.Geom.Triangle, step: number, color: number, alpha: number, width: number): void {
+    const clamped = Phaser.Math.Clamp(step, 0, 1);
+    const topX = Phaser.Math.Linear(triangle.x1, triangle.x2, clamped);
+    const topY = Phaser.Math.Linear(triangle.y1, triangle.y2, clamped);
+    const bottomX = Phaser.Math.Linear(triangle.x1, triangle.x3, clamped);
+    const bottomY = Phaser.Math.Linear(triangle.y1, triangle.y3, clamped);
+
+    this.graphics.lineStyle(width, color, alpha);
+    this.graphics.lineBetween(topX, topY, bottomX, bottomY);
+  }
+
+  private drawArenaSeals(age: number, active: boolean): void {
     const { arena } = this.context;
     const x = this.side === "left" ? arena.x + 12 : arena.x + arena.size - 12;
     const topY = arena.y + 12;
     const bottomY = arena.y + arena.size - 12;
     const direction = this.side === "left" ? 1 : -1;
+    const pulse = 0.5 + Math.sin(age * 0.032) * 0.5;
 
-    this.graphics.lineStyle(5, 0xe8ca7f, active ? 0.7 : 0.36);
+    this.graphics.lineStyle(active ? 5 : 3, active ? 0xf0d58a : 0xe8ca7f, active ? 0.68 + pulse * 0.18 : 0.34 + pulse * 0.16);
     this.graphics.lineBetween(x, topY, x + direction * 26, topY);
     this.graphics.lineBetween(x, topY, x, topY + 26);
     this.graphics.lineBetween(x, bottomY, x + direction * 26, bottomY);
     this.graphics.lineBetween(x, bottomY, x, bottomY - 26);
+
+    this.graphics.fillStyle(active ? 0x8df7ff : 0xf0d58a, active ? 0.5 : 0.28);
+    this.graphics.fillCircle(x + direction * 32, topY + 4, active ? 3.2 : 2.4);
+    this.graphics.fillCircle(x + direction * 32, bottomY - 4, active ? 3.2 : 2.4);
   }
 }

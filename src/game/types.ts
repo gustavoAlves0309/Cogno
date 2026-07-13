@@ -41,6 +41,12 @@ export interface Attack {
   readonly name: string;
   update(time: number, delta: number): void;
   collides(player: PlayerState): boolean;
+  /**
+   * Optional logical damage window. Attacks that expose one can consume the
+   * window on first contact even when the player's invulnerability blocks HP
+   * loss. Legacy attacks omit it and keep their existing collision behaviour.
+   */
+  getDamageWindowKey?(): string | null;
   isFinished(): boolean;
   destroy(): void;
 }

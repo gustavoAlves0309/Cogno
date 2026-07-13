@@ -1,3 +1,8 @@
 node_modules/
 dist/
 .superpowers/
+.codex/
+docs/reports/leonardo-wing-qa/
+vite-*.log
+__pycache__/
+*.py[cod]

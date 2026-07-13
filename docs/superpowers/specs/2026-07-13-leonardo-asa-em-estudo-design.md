@@ -79,7 +79,7 @@ Nenhuma quina é segura por omissão: os painéis ultrapassam os limites da aren
 | `v3-intro` | descida, subida, diagonal | esquerda `0,25`, direita `0,75`, centro `0,50` | `2,2` diâmetros | `700 ms` |
 | `v3-mature` | igual à estreia | igual à estreia | `2,2` diâmetros | `700 ms` |
 
-Os centros são coordenadas normalizadas ao longo do eixo transversal da asa. A passagem diagonal é fixa, viaja do quadrante superior esquerdo para o inferior direito e usa um ângulo de `28°` em relação ao eixo vertical. Não há aleatoriedade, mira dinâmica nem adaptação à posição atual do jogador.
+Os centros são coordenadas normalizadas ao longo do eixo transversal da asa. A passagem diagonal é fixa, viaja do quadrante superior esquerdo para o inferior direito e usa um ângulo de `20°` em relação ao eixo vertical. O valor substitui os `28°` iniciais porque esse ângulo criava uma pequena interseção entre a abertura direita e a diagonal junto à borda inferior; a margem nova preserva a separação total das safezones até na arena mínima. Não há aleatoriedade, mira dinâmica nem adaptação à posição atual do jogador.
 
 ### Cadência inicial de protótipo
 
